@@ -41,7 +41,7 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
@@ -383,7 +383,7 @@ def main():
         "splits": df["split"].value_counts().to_dict(),
         "split_strategy": "grouped by customer_id (no customer overlap)",
         "scenario_counts": df["scenario"].value_counts().to_dict(),
-        "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
     (DATA_DIR / "manifest.json").write_text(json.dumps(manifest, indent=2))
     print(json.dumps(manifest, indent=2))

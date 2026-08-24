@@ -9,7 +9,7 @@ model actually measured.
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import joblib
@@ -109,7 +109,7 @@ def main():
                       "was never used for training, model selection, "
                       "calibration, or threshold tuning.",
         "model_version": MODEL_VERSION,
-        "evaluated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "evaluated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "test_set": {
             "n_cases": int(len(y)),
             "n_abusive": int(y.sum()),

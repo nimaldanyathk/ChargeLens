@@ -14,16 +14,17 @@ Thresholds (tuned on calibrated validation probabilities):
     business cost (see costs.py), subject to a precision floor so the
     system does not fight honest customers to chase savings.
   * t_low  - the floor of the human-review band. The largest threshold
-    that still keeps recall of the "flagged" region (p >= t_low) at or
-    above RECALL_FLOOR, so hardly any truly abusive case lands in the
-    auto-accept band.
+    for which the auto-accept band (p < t_low) keeps its abusive rate
+    at or below MAX_LOW_BAND_ABUSE, i.e. we only auto-accept when the
+    negative predictive value stays >= 96%. This sizes the review band
+    by evidence, not by an arbitrary percentage.
 Cases with t_low <= p < t_high are routed to HUMAN REVIEW.
 """
 
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import joblib
@@ -45,8 +46,8 @@ DATA_DIR = BACKEND_DIR / "data"
 ARTIFACT_DIR = BACKEND_DIR / "artifacts"
 
 SEED = 42
-PRECISION_FLOOR = 0.85   # never auto-contest with worse precision than this
-RECALL_FLOOR = 0.97      # the flagged region must catch >= 97% of abuse
+PRECISION_FLOOR = 0.85       # never auto-contest with worse precision than this
+MAX_LOW_BAND_ABUSE = 0.04    # auto-accept band must stay >= 96% legitimate
 MODEL_VERSION = "1.0.0"
 
 
@@ -107,21 +108,22 @@ def tune_thresholds(y_val: np.ndarray, p_val: np.ndarray,
                    key=lambda x: x[1])
     t_high = best[0]
 
-    # ---- t_low: largest threshold keeping flagged-region recall high ----
+    # ---- t_low: widest auto-accept band that stays almost surely clean --
     t_low = 0.02
     for t in grid:
         if t >= t_high:
             break
-        flagged = (p_val >= t).astype(int)
-        tp = int(((flagged == 1) & (y_val == 1)).sum())
-        fn = int(((flagged == 0) & (y_val == 1)).sum())
-        recall = tp / max(tp + fn, 1)
-        if recall >= RECALL_FLOOR:
+        low_mask = p_val < t
+        if low_mask.sum() == 0:
+            t_low = float(t)
+            continue
+        if float(y_val[low_mask].mean()) <= MAX_LOW_BAND_ABUSE:
             t_low = float(t)
         else:
             break
     return {"t_low": t_low, "t_high": t_high,
-            "precision_floor": PRECISION_FLOOR, "recall_floor": RECALL_FLOOR,
+            "precision_floor": PRECISION_FLOOR,
+            "max_low_band_abuse": MAX_LOW_BAND_ABUSE,
             "cost_curve": curve}
 
 
@@ -169,13 +171,14 @@ def main():
                        if k != "cost_curve"},
         "n_features": len(FEATURE_COLUMNS),
         "seed": SEED,
-        "trained_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
     (ARTIFACT_DIR / "model_selection.json").write_text(
         json.dumps(selection, indent=2))
     (ARTIFACT_DIR / "thresholds.json").write_text(json.dumps({
         "t_low": thresholds["t_low"], "t_high": thresholds["t_high"],
-        "precision_floor": PRECISION_FLOOR, "recall_floor": RECALL_FLOOR,
+        "precision_floor": PRECISION_FLOOR,
+        "max_low_band_abuse": MAX_LOW_BAND_ABUSE,
         "cost_curve": thresholds["cost_curve"],
     }, indent=2))
     (ARTIFACT_DIR / "feature_columns.json").write_text(
