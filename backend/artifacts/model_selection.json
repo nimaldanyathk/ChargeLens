@@ -1,0 +1,42 @@
+{
+  "model_version": "1.0.0",
+  "selected_model": "xgboost_depth5",
+  "selection_metric": "validation PR-AUC",
+  "leaderboard": [
+    {
+      "model": "xgboost_depth5",
+      "val_pr_auc": 0.9313,
+      "val_roc_auc": 0.9464
+    },
+    {
+      "model": "xgboost_depth3",
+      "val_pr_auc": 0.9308,
+      "val_roc_auc": 0.9483
+    },
+    {
+      "model": "random_forest",
+      "val_pr_auc": 0.921,
+      "val_roc_auc": 0.947
+    },
+    {
+      "model": "logistic_regression_C1.0",
+      "val_pr_auc": 0.9049,
+      "val_roc_auc": 0.9307
+    },
+    {
+      "model": "logistic_regression_C0.1",
+      "val_pr_auc": 0.9048,
+      "val_roc_auc": 0.9305
+    }
+  ],
+  "calibration": "isotonic, fitted on validation",
+  "thresholds": {
+    "t_low": 0.09,
+    "t_high": 0.41,
+    "precision_floor": 0.85,
+    "max_low_band_abuse": 0.04
+  },
+  "n_features": 55,
+  "seed": 42,
+  "trained_at": "2026-08-23T05:09:57+00:00"
+}

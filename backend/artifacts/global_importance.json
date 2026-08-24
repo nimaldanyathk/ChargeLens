@@ -1,0 +1,131 @@
+{
+  "method": "SHAP (TreeExplainer for tree models); associational, not causal",
+  "sample_size": 1500,
+  "top_features": [
+    {
+      "feature": "claim_delay_days",
+      "mean_abs_shap": 0.939,
+      "mean_shap": -0.17219
+    },
+    {
+      "feature": "pnr_but_delivered",
+      "mean_abs_shap": 0.65961,
+      "mean_shap": -0.0038
+    },
+    {
+      "feature": "account_age_days",
+      "mean_abs_shap": 0.36507,
+      "mean_shap": -0.01941
+    },
+    {
+      "feature": "unauth_but_known_device",
+      "mean_abs_shap": 0.35345,
+      "mean_shap": -0.02958
+    },
+    {
+      "feature": "ip_geo_distance_km",
+      "mean_abs_shap": 0.29711,
+      "mean_shap": -0.07527
+    },
+    {
+      "feature": "disputed_amount",
+      "mean_abs_shap": 0.2949,
+      "mean_shap": -0.06259
+    },
+    {
+      "feature": "pnr_but_confirmed",
+      "mean_abs_shap": 0.2895,
+      "mean_shap": -0.00796
+    },
+    {
+      "feature": "delivery_confirmation__none",
+      "mean_abs_shap": 0.24397,
+      "mean_shap": -0.04898
+    },
+    {
+      "feature": "txns_last_24h",
+      "mean_abs_shap": 0.21833,
+      "mean_shap": -0.04791
+    },
+    {
+      "feature": "amount_over_aov",
+      "mean_abs_shap": 0.19364,
+      "mean_shap": -0.04566
+    },
+    {
+      "feature": "chargeback_rate",
+      "mean_abs_shap": 0.15858,
+      "mean_shap": -0.00351
+    },
+    {
+      "feature": "previous_failed_payments",
+      "mean_abs_shap": 0.14081,
+      "mean_shap": -0.00397
+    },
+    {
+      "feature": "chargeback_reason__unauthorized_transaction",
+      "mean_abs_shap": 0.13735,
+      "mean_shap": 0.01676
+    },
+    {
+      "feature": "device_shared_accounts",
+      "mean_abs_shap": 0.13322,
+      "mean_shap": -0.01958
+    },
+    {
+      "feature": "avg_order_value",
+      "mean_abs_shap": 0.12567,
+      "mean_shap": -0.02759
+    },
+    {
+      "feature": "delivery_status__unknown",
+      "mean_abs_shap": 0.11835,
+      "mean_shap": -0.01697
+    },
+    {
+      "feature": "orders_per_month",
+      "mean_abs_shap": 0.10779,
+      "mean_shap": -0.02264
+    },
+    {
+      "feature": "previous_orders",
+      "mean_abs_shap": 0.10114,
+      "mean_shap": -0.02177
+    },
+    {
+      "feature": "previous_returns",
+      "mean_abs_shap": 0.09601,
+      "mean_shap": 0.00474
+    },
+    {
+      "feature": "delivery_confirmation__photo",
+      "mean_abs_shap": 0.0947,
+      "mean_shap": 0.01173
+    },
+    {
+      "feature": "chargeback_reason__product_not_as_described",
+      "mean_abs_shap": 0.09126,
+      "mean_shap": -0.01077
+    },
+    {
+      "feature": "days_to_deliver",
+      "mean_abs_shap": 0.07839,
+      "mean_shap": -0.01103
+    },
+    {
+      "feature": "delivery_status__failed",
+      "mean_abs_shap": 0.07654,
+      "mean_shap": -0.01951
+    },
+    {
+      "feature": "delivery_confirmation__signed",
+      "mean_abs_shap": 0.07093,
+      "mean_shap": -0.00587
+    },
+    {
+      "feature": "chargeback_reason__product_not_received",
+      "mean_abs_shap": 0.05797,
+      "mean_shap": 0.03863
+    }
+  ]
+}
