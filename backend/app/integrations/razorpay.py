@@ -42,19 +42,18 @@ EVIDENCE_KEYS = [
     "refund_cancellation_policy", "term_and_conditions",
 ]
 
-# ChargeLens evidence-item keys -> Razorpay evidence categories.
+# ChargeLens evidence-item keys -> Razorpay evidence categories
+# (keys as emitted by evidence/engine.py).
 EVIDENCE_KEY_MAP = {
-    "delivery_status": "shipping_proof",
-    "delivery_confirmation": "shipping_proof",
-    "tracking": "shipping_proof",
-    "days_to_deliver": "shipping_proof",
+    "delivery_completed": "shipping_proof",
+    "delivery_confirmed": "shipping_proof",
+    "delivery_record": "shipping_proof",
     "payment_status": "billing_proof",
-    "amount_match": "billing_proof",
-    "shipping_billing_match": "billing_proof",
-    "device_known": "access_activity_log",
-    "device_shared": "access_activity_log",
-    "ip_distance": "access_activity_log",
-    "velocity": "access_activity_log",
+    "address_match": "billing_proof",
+    "order_history": "billing_proof",
+    "known_device": "access_activity_log",
+    "no_prior_disputes": "customer_communication",
+    "late_claim": "explanation_letter",
 }
 
 

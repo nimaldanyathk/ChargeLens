@@ -163,13 +163,13 @@ def test_contest_payload_uses_razorpay_evidence_keys():
         id = "CB-X"
 
     payload = build_contest_payload(Case(), [
-        Item("delivery_confirmation", "merchant"),
-        Item("device_known", "merchant"),
-        Item("velocity", "customer"),      # customer-supporting: excluded
+        Item("delivery_confirmed", "merchant"),
+        Item("known_device", "merchant"),
+        Item("high_velocity", "customer"),  # customer-supporting: excluded
     ])
     assert payload["action"] == "draft"    # never auto-submits
     assert payload["amount"] == 1234500    # rupees -> paise
     assert "shipping_proof" in payload
     assert "access_activity_log" in payload
     # customer-supporting evidence must never appear in the contest pack
-    assert all("velocity" not in str(v) for v in payload.values())
+    assert all("high_velocity" not in str(v) for v in payload.values())
