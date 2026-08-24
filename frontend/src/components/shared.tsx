@@ -64,3 +64,30 @@ export function fmtDate(iso: string | null | undefined): string {
     hour: "2-digit", minute: "2-digit",
   });
 }
+
+export const RAIL_LABEL: Record<string, string> = {
+  upi: "UPI", card: "Card", netbanking: "Netbanking", wallet: "Wallet",
+};
+
+/** Countdown chip for the dispute response deadline. A missed deadline
+ * is an automatic loss, so urgency drives the queue. */
+export function DeadlineChip({ respondBy, status }: {
+  respondBy: string | null; status: string;
+}) {
+  if (!respondBy) return <span className="badge badge-neutral"><span className="dot" />No deadline</span>;
+  const decided = ["approved", "rejected"].includes(status);
+  const msLeft = new Date(respondBy).getTime() - Date.now();
+  const daysLeft = msLeft / 86_400_000;
+  if (decided) {
+    return <span className="badge badge-neutral"><span className="dot" />Responded</span>;
+  }
+  if (msLeft <= 0) {
+    return <span className="badge badge-high"><span className="dot" />Deadline passed</span>;
+  }
+  const label = daysLeft >= 1
+    ? `${Math.floor(daysLeft)}d left`
+    : `${Math.max(1, Math.floor(msLeft / 3_600_000))}h left`;
+  const cls = daysLeft < 2 ? "badge-high"
+    : daysLeft < 5 ? "badge-review" : "badge-low";
+  return <span className={`badge ${cls}`}><span className="dot" />{label}</span>;
+}

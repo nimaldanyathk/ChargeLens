@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { api, inr, type CaseDetail, type EvidenceItemT, type Factor } from "../api";
-import { BandBadge, REASON_LABEL, StatusBadge, fmtDate } from "../components/shared";
+import { api, inr, pct, type CaseDetail, type Economics, type EvidenceItemT, type Factor } from "../api";
+import { BandBadge, DeadlineChip, RAIL_LABEL, REASON_LABEL, StatusBadge, fmtDate } from "../components/shared";
 
 const BAND_COLOR: Record<string, string> = {
   high: "var(--critical)", review: "var(--warning)", low: "var(--good)",
@@ -47,7 +47,11 @@ export default function CaseDetailPage() {
         <h1 className="page-title" style={{ margin: 0 }}>{data.case_id}</h1>
         <StatusBadge status={data.status} />
         <BandBadge band={data.band} score={data.risk_score} />
+        <DeadlineChip respondBy={data.respond_by} status={data.status} />
         <span style={{ marginLeft: "auto", color: "var(--ink-2)" }}>
+          {RAIL_LABEL[data.rail] ?? data.rail}
+          {data.network && data.network !== data.rail ? ` (${data.network})` : ""}
+          {" · "}
           {REASON_LABEL[data.reason] ?? data.reason} · {inr(data.disputed_amount)}
         </span>
       </div>
@@ -75,6 +79,7 @@ export default function CaseDetailPage() {
         <RecordCards data={data} />
         <div className="grid" style={{ gap: 14 }}>
           {risk && <RiskCard risk={risk} />}
+          {risk?.economics && <EconomicsCard econ={risk.economics} caseId={data.case_id} rec={data.recommendation} />}
           {data.recommendation && (
             <RecommendationCard
               data={data} busy={busy} note={note} setNote={setNote} decide={decide}
@@ -235,6 +240,50 @@ function FactorBars({ factors }: { factors: Factor[] }) {
       ))}
       <div className="chart-note">
         ▲ raises modelled risk (red) · ▼ lowers it (blue)
+      </div>
+    </div>
+  );
+}
+
+function EconomicsCard({ econ, caseId, rec }: {
+  econ: Economics; caseId: string; rec: string | null;
+}) {
+  return (
+    <div className="card">
+      <h3>
+        Dispute economics
+        <span className="h3-note">is this contest worth fighting?</span>
+      </h3>
+      <dl className="kv">
+        <dt>Modeled win probability</dt>
+        <dd>{pct(econ.p_win, 0)}</dd>
+        <dt style={{ paddingLeft: 12 }}>= calibrated risk</dt>
+        <dd>{pct(econ.p_cal, 0)}, capped at {pct(econ.prior_cap, 0)} for this reason type</dd>
+        <dt style={{ paddingLeft: 12 }}>× evidence factor</dt>
+        <dd>{econ.evidence_factor} ({econ.evidence_strength} evidence)</dd>
+        <dt>Expected recovery</dt><dd>{inr(econ.expected_recovery_inr)}</dd>
+        <dt>Cost to contest</dt>
+        <dd>{inr(econ.contest_cost_inr)} (fee not refunded on a win)</dd>
+        <dt>Expected value</dt>
+        <dd style={{ color: econ.economic ? "var(--good)" : "var(--bad)" }}>
+          {inr(econ.ev_contest_inr)} — {econ.economic ? "worth contesting" : "uneconomic"}
+        </dd>
+        <dt>Break-even win probability</dt>
+        <dd>{pct(econ.break_even_p_win, 1)} at this amount</dd>
+      </dl>
+      {rec === "contest" && (
+        <div className="chart-note" style={{ marginTop: 8 }}>
+          <a href={`/api/cases/${caseId}/contest-payload`} target="_blank" rel="noreferrer">
+            View Razorpay contest payload
+          </a>{" "}
+          — matches PATCH /v1/disputes/:id/contest, action stays "draft".
+        </div>
+      )}
+      <div className="chart-note">
+        Win probabilities are anchored to industry representment outcomes,
+        not model confidence alone. Assumptions: fee {inr(econ.assumptions.dispute_fee_inr)},
+        ops {inr(econ.assumptions.ops_cost_inr)}, pre-arbitration haircut{" "}
+        {pct(econ.assumptions.pre_arb_haircut, 1)}.
       </div>
     </div>
   );

@@ -28,6 +28,30 @@ export interface CaseSummary {
   recommendation: string | null;
   risk_score: number | null;
   band: string | null;
+  rail: string;
+  network: string | null;
+  respond_by: string | null;
+  external_ref: string | null;
+  external_status: string | null;
+}
+
+export interface Economics {
+  p_cal: number;
+  evidence_strength: string;
+  evidence_factor: number;
+  prior_cap: number;
+  p_win: number;
+  expected_recovery_inr: number;
+  contest_cost_inr: number;
+  ev_contest_inr: number;
+  break_even_p_win: number;
+  economic: boolean;
+  assumptions: {
+    dispute_fee_inr: number;
+    ops_cost_inr: number;
+    pre_arb_haircut: number;
+    note: string;
+  };
 }
 
 export interface Factor {
@@ -87,6 +111,7 @@ export interface CaseDetail extends CaseSummary {
   risk: {
     risk_score: number; band: string; model_version: string;
     top_factors: Factor[]; scored_at: string | null;
+    economics: Economics | null;
   } | null;
   evidence: EvidenceItemT[];
   audit: AuditEntry[];

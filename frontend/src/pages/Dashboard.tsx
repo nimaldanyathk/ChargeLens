@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, inr, type CaseSummary, type Dashboard as DashboardT } from "../api";
-import { BandBadge, REASON_LABEL, Stat, StatusBadge, fmtDate } from "../components/shared";
+import { BandBadge, DeadlineChip, REASON_LABEL, Stat, StatusBadge } from "../components/shared";
 
 export default function Dashboard() {
   const [dash, setDash] = useState<DashboardT | null>(null);
@@ -14,7 +14,12 @@ export default function Dashboard() {
       api.dashboard(),
       api.cases({ status: "awaiting_review", limit: "8" }),
     ])
-      .then(([d, c]) => { setDash(d); setQueue(c.cases); })
+      .then(([d, c]) => {
+        setDash(d);
+        // deadline-first: a missed respond_by is an automatic loss
+        setQueue([...c.cases].sort((a, b) =>
+          (a.respond_by ?? "9999").localeCompare(b.respond_by ?? "9999")));
+      })
       .catch((e) => setError(String(e)));
   }, []);
 
@@ -65,7 +70,7 @@ export default function Dashboard() {
             <thead>
               <tr>
                 <th>Dispute</th><th>Reason</th><th className="num">Amount</th>
-                <th>Risk</th><th>Recommendation</th><th>Status</th><th>Claimed</th>
+                <th>Risk</th><th>Recommendation</th><th>Status</th><th>Deadline</th>
               </tr>
             </thead>
             <tbody>
@@ -85,7 +90,7 @@ export default function Dashboard() {
                   <td><BandBadge band={c.band} score={c.risk_score} /></td>
                   <td style={{ textTransform: "capitalize" }}>{c.recommendation ?? "—"}</td>
                   <td><StatusBadge status={c.status} /></td>
-                  <td>{fmtDate(c.claim_ts)}</td>
+                  <td><DeadlineChip respondBy={c.respond_by} status={c.status} /></td>
                 </tr>
               ))}
             </tbody>
