@@ -12,7 +12,8 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from ..evidence.engine import collect_evidence
+from ..decision import economics
+from ..evidence.engine import collect_evidence, merchant_strength
 from ..llm.generator import generate_response_text
 from ..models.entities import (
     AuditLog, Chargeback, Customer, Delivery, EvidenceItem, Order,
@@ -109,12 +110,6 @@ def investigate(db: Session, case: Chargeback) -> Chargeback:
     assert_tool_allowed("calculate_risk")
     raw = case_to_raw_row(case, customer, txn, order, delivery)
     result = scorer.score(raw)
-    db.query(RiskPrediction).filter(
-        RiskPrediction.case_id == case.id).delete()
-    db.add(RiskPrediction(
-        case_id=case.id, model_version=result["model_version"],
-        risk_score=result["risk_score"], band=result["band"],
-        top_factors=result["top_factors"]))
     _log(db, case.id, "agent", "risk_scored", {
         "tool": "calculate_risk",
         "risk_score": result["risk_score"], "band": result["band"],
@@ -139,9 +134,26 @@ def investigate(db: Session, case: Chargeback) -> Chargeback:
         "prior_claims_checked": len(prior_claims),
     })
 
-    # recommendation (policy layer, evidence-gated)
+    # dispute economics: is this contest worth fighting at this amount?
+    econ = economics.evaluate(
+        case.disputed_amount, result["risk_score"],
+        merchant_strength(evidence), case.reason)
+    db.query(RiskPrediction).filter(
+        RiskPrediction.case_id == case.id).delete()
+    db.add(RiskPrediction(
+        case_id=case.id, model_version=result["model_version"],
+        risk_score=result["risk_score"], band=result["band"],
+        top_factors=result["top_factors"], economics=econ))
+    _log(db, case.id, "agent", "economics_computed", {
+        "p_win": econ["p_win"],
+        "ev_contest_inr": econ["ev_contest_inr"],
+        "break_even_p_win": econ["break_even_p_win"],
+        "economic": econ["economic"],
+    })
+
+    # recommendation (policy layer, evidence- and economics-gated)
     recommendation, reason = recommend(
-        result["band"], result["risk_score"], evidence)
+        result["band"], result["risk_score"], evidence, econ)
     case.recommendation = recommendation
     case.recommendation_reason = reason
     _log(db, case.id, "agent", "recommendation", {

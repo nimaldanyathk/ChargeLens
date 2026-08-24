@@ -145,6 +145,30 @@ def investigate_case(case_id: str, db: Session = Depends(get_db)):
     return case_detail(db, case)
 
 
+@router.get("/{case_id}/contest-payload")
+def contest_payload(case_id: str, db: Session = Depends(get_db)):
+    """Contest-ready payload matching Razorpay's real
+    PATCH /v1/disputes/:id/contest schema (action stays 'draft' - a
+    human submit is a separate, explicit step)."""
+    from ..integrations.razorpay import build_contest_payload, keys_configured
+
+    case = db.get(Chargeback, case_id)
+    if case is None:
+        raise HTTPException(404, f"case {case_id} not found")
+    if case.recommendation != "contest":
+        raise HTTPException(
+            409, "contest payload is only built for cases the agent "
+                 "recommends contesting")
+    payload = build_contest_payload(case, case.evidence)
+    return {
+        "dispute_id": case.external_ref or f"disp_demo_{case.id}",
+        "endpoint": f"PATCH /v1/disputes/"
+                    f"{case.external_ref or 'disp_demo_' + case.id}/contest",
+        "mode": "connected" if keys_configured() else "dry_run",
+        "payload": payload,
+    }
+
+
 @router.post("/{case_id}/decision")
 def decide_case(case_id: str, body: DecisionRequest,
                 db: Session = Depends(get_db)):

@@ -34,6 +34,11 @@ def case_summary(case: Chargeback) -> dict:
         "recommendation": case.recommendation,
         "risk_score": pred.risk_score if pred else None,
         "band": pred.band if pred else None,
+        "rail": case.rail,
+        "network": case.network,
+        "respond_by": _ts(case.respond_by),
+        "external_ref": case.external_ref,
+        "external_status": case.external_status,
     }
 
 
@@ -97,6 +102,7 @@ def case_detail(db: Session, case: Chargeback) -> dict:
             "model_version": pred.model_version,
             "top_factors": pred.top_factors,
             "scored_at": _ts(pred.created_at),
+            "economics": pred.economics,
         } if pred else None,
         "evidence": [{
             "key": e.key, "statement": e.statement, "value": e.value,

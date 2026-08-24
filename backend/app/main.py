@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import analytics, cases, dashboard
+from .api import analytics, cases, dashboard, webhooks
 from .config import settings
 from .database import engine, init_db
 from .models.entities import Chargeback
@@ -45,6 +45,7 @@ app.add_middleware(
 app.include_router(cases.router)
 app.include_router(dashboard.router)
 app.include_router(analytics.router)
+app.include_router(webhooks.router)
 
 
 @app.get("/api/health")

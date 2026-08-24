@@ -130,13 +130,28 @@ def _mk_entities(db, row: dict, case_id: str) -> Chargeback:
         delivered_ts=_parse_ts(row.get("delivered_ts")),
         days_to_deliver=days))
 
+    # rail/network derive from the payment method; response deadlines
+    # differ per rail (NPCI/UPI ~7 working days, card networks ~10)
+    method = row["payment_method"]
+    rail = {"upi": "upi", "netbanking": "netbanking",
+            "wallet": "wallet"}.get(method, "card")
+    if rail == "card":
+        network = str(rng.choice(["visa", "mastercard", "rupay"],
+                                 p=[0.5, 0.4, 0.1]))
+    else:
+        network = "npci" if rail == "upi" else rail
+    claim_ts = _parse_ts(row.get("claim_ts"))
+    respond_by = (claim_ts + timedelta(days=7 if rail == "upi" else 10)
+                  if claim_ts else None)
+
     case = Chargeback(
         id=case_id, customer_id=cust_id, transaction_id=txn.id,
         order_id=order.id, reason=row["chargeback_reason"],
         claim_description=row["claim_description"],
         disputed_amount=float(row["disputed_amount"]),
-        claim_ts=_parse_ts(row.get("claim_ts")),
+        claim_ts=claim_ts,
         claim_delay_days=float(row["claim_delay_days"]),
+        rail=rail, network=network, respond_by=respond_by,
         status="received")
     db.add(case)
     db.add(AuditLog(case_id=case_id, actor="system",

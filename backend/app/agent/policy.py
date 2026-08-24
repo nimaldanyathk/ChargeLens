@@ -52,19 +52,38 @@ def assert_tool_allowed(name: str) -> None:
             f"tool '{name}' is outside the agent's permission boundary")
 
 
-def recommend(band: str, risk_score: float,
-              evidence: list[Evidence]) -> tuple[str, str]:
-    """Return (recommendation, reason)."""
+def recommend(band: str, risk_score: float, evidence: list[Evidence],
+              econ: dict | None = None) -> tuple[str, str]:
+    """Return (recommendation, reason).
+
+    Economics gate: even a high-risk, well-evidenced case is not worth
+    contesting when the expected value is negative - the dispute fee is
+    sunk either way, so a small-amount contest can cost more than it can
+    recover. EV math and assumptions live in decision/economics.py.
+    """
     strength = merchant_strength(evidence)
     missing = missing_evidence(evidence)
 
     if band == "high":
         if strength == "strong":
+            if econ is not None and not econ["economic"]:
+                return ("accept",
+                        f"Risk score {risk_score:.0%} with strong evidence, "
+                        f"but contesting is uneconomic at this amount: "
+                        f"expected recovery ₹{econ['expected_recovery_inr']:,.0f} "
+                        f"vs contest cost ₹{econ['contest_cost_inr']:,.0f} "
+                        f"(EV ₹{econ['ev_contest_inr']:,.0f}). The dispute "
+                        f"fee is not refunded even on a win.")
+            ev_note = ""
+            if econ is not None:
+                ev_note = (f" Expected value of contesting: "
+                           f"₹{econ['ev_contest_inr']:,.0f} at a modeled "
+                           f"win probability of {econ['p_win']:.0%}.")
             return ("contest",
                     f"Risk score {risk_score:.0%} with strong contradicting "
                     f"evidence on file. The dispute pattern is consistent "
                     f"with an illegitimate claim and the merchant holds the "
-                    f"evidence needed to represent the case.")
+                    f"evidence needed to represent the case." + ev_note)
         reason = (f"The model scores this claim high risk "
                   f"({risk_score:.0%}), but the merchant's evidence is "
                   f"{strength}: contesting without decisive proof is likely "

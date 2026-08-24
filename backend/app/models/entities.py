@@ -101,6 +101,19 @@ class Chargeback(Base):
     claim_ts: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     claim_delay_days: Mapped[float | None] = mapped_column(Float,
                                                            nullable=True)
+    # payment rail context: UPI disputes follow NPCI URCS semantics
+    # (7-working-day merchant response), card disputes follow the
+    # network representment track - deadlines and language differ
+    rail: Mapped[str] = mapped_column(String(12), default="card")
+    network: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    respond_by: Mapped[datetime | None] = mapped_column(DateTime,
+                                                        nullable=True)
+    # set when the case came in through the Razorpay Disputes webhook
+    external_ref: Mapped[str | None] = mapped_column(String(40),
+                                                     nullable=True,
+                                                     index=True)
+    external_status: Mapped[str | None] = mapped_column(String(24),
+                                                        nullable=True)
 
     # workflow state
     status: Mapped[str] = mapped_column(String(24), default="received",
@@ -140,6 +153,7 @@ class RiskPrediction(Base):
     risk_score: Mapped[float] = mapped_column(Float)
     band: Mapped[str] = mapped_column(String(12))
     top_factors: Mapped[list] = mapped_column(JSON)
+    economics: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     case: Mapped[Chargeback] = relationship(back_populates="prediction")
