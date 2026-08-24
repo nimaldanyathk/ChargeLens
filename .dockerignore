@@ -1,5 +1,9 @@
 .git
 .venv
+._*
+**/._*
+.DS_Store
+**/.DS_Store
 **/__pycache__
 **/node_modules
 frontend/dist
