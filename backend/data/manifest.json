@@ -1,0 +1,27 @@
+{
+  "synthetic": true,
+  "disclosure": "All records are synthetically generated; no real customer or payment data is present.",
+  "n_cases": 12000,
+  "seed": 42,
+  "label_noise": 0.03,
+  "class_balance": {
+    "abusive": 4570,
+    "legitimate": 7430,
+    "abusive_rate": 0.3808
+  },
+  "splits": {
+    "train": 8420,
+    "test": 1791,
+    "val": 1789
+  },
+  "split_strategy": "grouped by customer_id (no customer overlap)",
+  "scenario_counts": {
+    "lost_package": 3315,
+    "defective_item": 2595,
+    "friendly_fraud_pnr": 2110,
+    "true_fraud_victim": 1591,
+    "opportunist_abuse": 1199,
+    "false_unauthorized": 1190
+  },
+  "generated_at": "2026-08-23T05:06:44+00:00"
+}
