@@ -1,0 +1,11 @@
+.git
+.venv
+**/__pycache__
+**/node_modules
+frontend/dist
+backend/chargelens.db
+backend/.tmp-tests
+docs
+*.md
+.claude
+.pipeline_run.log
