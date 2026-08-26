@@ -344,7 +344,7 @@ def split_by_customer(df: pd.DataFrame, seed: int,
                       train=0.70, val=0.15):
     """Group split on customer_id so no customer straddles splits."""
     rng = np.random.default_rng(seed + 1)
-    customers = df["customer_id"].unique()
+    customers = np.array(df["customer_id"].unique(), dtype=object)
     rng.shuffle(customers)
     n = len(customers)
     train_c = set(customers[: int(n * train)])
