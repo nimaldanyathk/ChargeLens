@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -21,6 +22,71 @@ VALID_DECISIONS = {"approve", "reject", "escalate"}
 class DecisionRequest(BaseModel):
     action: str = Field(pattern="^(approve|reject|escalate)$")
     note: str = ""
+
+
+class CaseIntake(BaseModel):
+    """A new chargeback case arriving from the payment provider."""
+
+    customer_id: str = Field(min_length=1, max_length=32)
+    chargeback_reason: Literal["product_not_received",
+                               "unauthorized_transaction",
+                               "product_not_as_described"]
+    claim_description: str = Field(min_length=1, max_length=2000)
+    disputed_amount: float = Field(gt=0, le=10_000_000)
+    payment_method: Literal["credit_card", "debit_card", "upi",
+                            "netbanking", "wallet"]
+    product_category: Literal["electronics", "fashion", "home", "beauty",
+                              "sports", "books", "toys"]
+    product_name: str = Field(min_length=1, max_length=120)
+    quantity: int = Field(ge=1, le=50)
+    shipping_city: str = Field(min_length=1, max_length=60)
+    billing_city: str = Field(min_length=1, max_length=60)
+    account_age_days: float = Field(ge=0)
+    previous_orders: int = Field(ge=0)
+    previous_chargebacks: int = Field(ge=0)
+    previous_returns: int = Field(ge=0)
+    previous_failed_payments: int = Field(ge=0)
+    avg_order_value: float = Field(gt=0)
+    delivery_status: Literal["delivered", "in_transit", "failed",
+                             "returned_to_sender", "unknown"]
+    delivery_confirmation: Literal["signed", "otp", "photo", "none"]
+    has_tracking: bool
+    days_to_deliver: float | None = Field(default=None, ge=0)
+    device_seen_before: bool
+    device_shared_accounts: int = Field(ge=0)
+    ip_geo_distance_km: float = Field(ge=0)
+    txns_last_24h: int = Field(ge=0)
+    claim_delay_days: float = Field(ge=0)
+
+
+@router.post("", status_code=201)
+def create_case(body: CaseIntake, db: Session = Depends(get_db)):
+    """Register a chargeback case (no investigation happens until asked)."""
+    from ..seed import _mk_entities
+
+    n = db.query(Chargeback).count()
+    case_id = f"CB-N{20_000 + n}"
+    while db.get(Chargeback, case_id) is not None:
+        n += 1
+        case_id = f"CB-N{20_000 + n}"
+
+    row = {
+        **body.model_dump(),
+        "transaction_id": f"TXN-N{20_000 + n}",
+        "order_id": f"ORD-N{20_000 + n}",
+        "currency": "INR",
+        "payment_status": "captured",
+        "shipping_billing_match": int(
+            body.shipping_city.strip().lower()
+            == body.billing_city.strip().lower()),
+        "device_seen_before": int(body.device_seen_before),
+        "has_tracking": int(body.has_tracking),
+        "order_ts": None, "shipped_ts": None, "delivered_ts": None,
+        "claim_ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+    case = _mk_entities(db, row, case_id)
+    db.commit()
+    return case_detail(db, case)
 
 
 @router.get("")
