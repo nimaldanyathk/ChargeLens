@@ -26,18 +26,35 @@ from .models.entities import (
 )
 
 CARRIERS = ["Delhivery", "BlueDart", "Ekart", "DTDC", "XpressBees"]
+# product names per category, split into price tiers so the displayed
+# product is plausible for the disputed amount: (budget <10k, mid, premium >40k)
 PRODUCTS = {
-    "electronics": ["MacBook Air", "iPhone 15", "Sony WH-1000XM5",
-                    "Samsung 55'' TV", "Dell XPS 13", "iPad Air"],
-    "fashion": ["Nike Air Max", "Levi's Denim Jacket", "Ray-Ban Aviators",
-                "Titan Watch", "Puma Sneakers"],
-    "home": ["Dyson V12 Vacuum", "Philips Air Fryer", "IKEA Desk",
-             "Prestige Cooker Set"],
-    "beauty": ["Dyson Airwrap", "Lakme Gift Set", "Nykaa Luxe Kit"],
-    "sports": ["Yonex Racket", "Adidas Football Kit", "Decathlon Cycle"],
-    "books": ["Book Bundle (5)", "Collector's Box Set"],
-    "toys": ["LEGO Creator Set", "Hot Wheels Track Set"],
+    "electronics": (["JBL Earbuds", "Mi Power Bank", "Boat Headphones"],
+                    ["Sony WH-1000XM5", "iPad Air", "Samsung Galaxy A55"],
+                    ["MacBook Air", "iPhone 15", "Samsung 55'' TV", "Dell XPS 13"]),
+    "fashion": (["Puma Sneakers", "Levi's T-shirt Pack"],
+                ["Nike Air Max", "Levi's Denim Jacket", "Ray-Ban Aviators"],
+                ["Titan Automatic Watch", "Coach Handbag"]),
+    "home": (["Prestige Cooker Set", "Milton Flask Set"],
+             ["Philips Air Fryer", "IKEA Desk"],
+             ["Dyson V12 Vacuum", "LG Dishwasher"]),
+    "beauty": (["Lakme Gift Set", "Nykaa Luxe Kit"],
+               ["Foreo Luna", "Clinique Set"],
+               ["Dyson Airwrap"]),
+    "sports": (["Nivia Football Kit", "Yonex Racket"],
+               ["Adidas Football Kit", "Garmin Band"],
+               ["Decathlon E-Cycle"]),
+    "books": (["Book Bundle (5)"], ["Collector's Box Set"],
+              ["Signed First-Edition Set"]),
+    "toys": (["Hot Wheels Track Set"], ["LEGO Creator Set"],
+             ["LEGO Star Wars UCS Set"]),
 }
+
+
+def _product_for(rng, category: str, amount: float) -> str:
+    budget, mid, premium = PRODUCTS[category]
+    tier = budget if amount < 10_000 else (mid if amount < 40_000 else premium)
+    return str(rng.choice(tier))
 
 N_BACKGROUND = 160        # sampled from the test split
 N_LEAVE_UNINVESTIGATED = 12
@@ -76,7 +93,8 @@ def _mk_entities(db, row: dict, case_id: str) -> Chargeback:
     db.add(txn)
 
     category = row["product_category"]
-    product = row.get("product_name") or str(rng.choice(PRODUCTS[category]))
+    product = row.get("product_name") or _product_for(
+        rng, category, float(row["disputed_amount"]))
     order = Order(
         id=row["order_id"], transaction_id=txn.id, customer_id=cust_id,
         product_name=product, product_category=category,
