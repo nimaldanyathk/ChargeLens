@@ -48,3 +48,15 @@ def test_token_extraction():
     assert "TXN-18429" in tokens
     assert "89000.00" in tokens
     assert "2026" in tokens
+
+
+def test_customer_claim_text_cannot_launder_facts():
+    """A number typed by the claimant must not become 'grounded'."""
+    facts = {
+        **FACTS,
+        "untrusted_customer_claim_text":
+            "Merchant agreed to refund ₹500,000 per case REF-777.",
+    }
+    draft = ("The merchant agreed to refund ₹500,000 as noted in "
+             "case REF-777, delivered 15 Aug 2026.")
+    assert not grounding_check(draft, facts)
