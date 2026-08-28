@@ -99,9 +99,11 @@ def main():
     # three-band policy: auto-decide outside the review band; humans decide
     # review-band cases and are assumed correct (assumption disclosed here)
     auto_mask = band != "review"
+    rev_mask = ~auto_mask
     policy_cost = (
         expected_cost(y[auto_mask], pred[auto_mask], amounts[auto_mask])
-        + float((band == "review").sum()) * REVIEW_OPS_COST)
+        + expected_cost(y[rev_mask], y[rev_mask], amounts[rev_mask])
+        + float(rev_mask.sum()) * REVIEW_OPS_COST)
 
     metrics = {
         "disclosure": "Synthetic dataset (see data/manifest.json). All "
