@@ -132,10 +132,13 @@ def deterministic_response(case: Chargeback, txn: Transaction, order: Order,
 # ---- grounding validation for LLM drafts --------------------------------
 
 _TOKEN_RE = re.compile(r"[A-Z]{2,4}-\d+|\d[\d,]*\.?\d*")
+_LIST_MARKER_RE = re.compile(r"^\s*\d{1,2}\.\s", re.MULTILINE)
 
 
 def _extract_tokens(text: str) -> set[str]:
     """Pull identifiers and numbers out of text for grounding comparison."""
+    # ordinal list markers ("1. ", "2. ") are formatting, not facts
+    text = _LIST_MARKER_RE.sub("", text)
     tokens = set()
     for m in _TOKEN_RE.findall(text):
         cleaned = m.replace(",", "").rstrip(".")
@@ -145,9 +148,10 @@ def _extract_tokens(text: str) -> set[str]:
 
 
 def _is_trivial(tok: str) -> bool:
-    # single digits and years-of-format artifacts are not treated as facts
+    # only the smallest counts (0-3, e.g. "quantity 1") are exempt; any
+    # larger number in a draft must be present in the trusted facts
     try:
-        return float(tok) < 32
+        return float(tok) < 4
     except ValueError:
         return False
 

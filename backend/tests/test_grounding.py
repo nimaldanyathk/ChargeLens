@@ -36,6 +36,18 @@ def test_invented_date_number_fails():
     assert not grounding_check(draft, FACTS)
 
 
+def test_invented_small_count_fails():
+    # counts as small as 4+ must also be grounded, not waved through
+    draft = "Package delivered on 15 Aug 2026 after 7 delivery attempts."
+    assert not grounding_check(draft, FACTS)
+
+
+def test_line_start_list_markers_are_not_facts():
+    draft = ("4. Transaction TXN-18429 was captured.\n"
+             "5. It was delivered on 15 Aug 2026.")
+    assert grounding_check(draft, FACTS)
+
+
 def test_small_counts_are_not_facts():
     # ordinal list markers / tiny integers must not trigger false failures
     draft = ("1. Transaction TXN-18429 was captured. "
