@@ -2,7 +2,10 @@
 
 Protocol (strictly enforced):
   * TRAIN split      -> model fitting only.
-  * VALIDATION split -> model selection, calibration, threshold tuning.
+  * VALIDATION split -> model selection on the full split; then the split
+    is divided by customer into a CALIBRATION half (isotonic fit) and a
+    disjoint TUNING half (threshold search), so thresholds are chosen on
+    probabilities the calibrator did not see in-sample.
   * TEST split       -> never touched here; evaluate.py reads it once.
 
 Candidates: a logistic-regression baseline, a random forest, and
@@ -109,18 +112,18 @@ def tune_thresholds(y_val: np.ndarray, p_val: np.ndarray,
     t_high = best[0]
 
     # ---- t_low: widest auto-accept band that stays almost surely clean --
+    # the empirical abuse rate is not monotone in t (sampling noise), so
+    # scan every candidate and keep the LARGEST threshold whose band both
+    # satisfies the abuse ceiling and is big enough to certify it
     t_low = 0.02
     for t in grid:
         if t >= t_high:
             break
         low_mask = p_val < t
-        if low_mask.sum() == 0:
-            t_low = float(t)
+        if low_mask.sum() < 30:
             continue
         if float(y_val[low_mask].mean()) <= MAX_LOW_BAND_ABUSE:
             t_low = float(t)
-        else:
-            break
     return {"t_low": t_low, "t_high": t_high,
             "precision_floor": PRECISION_FLOOR,
             "max_low_band_abuse": MAX_LOW_BAND_ABUSE,
@@ -150,14 +153,21 @@ def main():
     winner_name = leaderboard[0]["model"]
     winner = fitted[winner_name]
 
-    # ---- calibrate on validation ----------------------------------------
-    calibrated = IsotonicCalibratedModel(winner, FEATURE_COLUMNS)
-    calibrated.fit_calibrator(X_val, y_val)
-    p_val = calibrated.predict_proba(X_val)[:, 1]
+    # ---- calibrate on one half of validation, tune on the other --------
+    cal_customers = np.array(sorted(val_df["customer_id"].unique()),
+                             dtype=object)
+    np.random.default_rng(SEED + 2).shuffle(cal_customers)
+    cal_set = set(cal_customers[: len(cal_customers) // 2])
+    cal_mask = val_df["customer_id"].isin(cal_set).to_numpy()
 
-    # ---- thresholds -------------------------------------------------------
+    calibrated = IsotonicCalibratedModel(winner, FEATURE_COLUMNS)
+    calibrated.fit_calibrator(X_val[cal_mask], y_val[cal_mask])
+    p_tune = calibrated.predict_proba(X_val[~cal_mask])[:, 1]
+
+    # ---- thresholds (on the disjoint tuning half) -----------------------
     thresholds = tune_thresholds(
-        y_val, p_val, val_df["disputed_amount"].to_numpy())
+        y_val[~cal_mask], p_tune,
+        val_df["disputed_amount"].to_numpy()[~cal_mask])
 
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump(calibrated, ARTIFACT_DIR / "model.joblib")
@@ -166,7 +176,10 @@ def main():
         "selected_model": winner_name,
         "selection_metric": "validation PR-AUC",
         "leaderboard": leaderboard,
-        "calibration": "isotonic, fitted on validation",
+        "calibration": "isotonic, fitted on the calibration half of "
+                       "validation (split by customer)",
+        "threshold_tuning": "tuned on the disjoint tuning half of "
+                            "validation",
         "thresholds": {k: v for k, v in thresholds.items()
                        if k != "cost_curve"},
         "n_features": len(FEATURE_COLUMNS),
