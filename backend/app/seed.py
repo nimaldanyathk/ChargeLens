@@ -13,6 +13,7 @@ Run:  python -m app.seed
 from __future__ import annotations
 
 import sys
+import zlib
 from datetime import datetime, timedelta
 
 import numpy as np
@@ -68,7 +69,8 @@ def _parse_ts(v) -> datetime | None:
 
 def _mk_entities(db, row: dict, case_id: str) -> Chargeback:
     """Create the relational records for one raw case row."""
-    rng = np.random.default_rng(abs(hash(case_id)) % (2**32))
+    # crc32 (not the salted built-in hash) keeps seeding deterministic
+    rng = np.random.default_rng(zlib.crc32(case_id.encode()))
     cust_id = row["customer_id"]
     if db.get(Customer, cust_id) is None:
         db.add(Customer(
