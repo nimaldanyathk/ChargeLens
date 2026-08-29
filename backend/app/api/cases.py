@@ -101,9 +101,12 @@ def list_cases(
     if status:
         query = query.filter(Chargeback.status == status)
     if q:
-        like = f"%{q}%"
+        escaped = (q.replace("\\", "\\\\")
+                   .replace("%", "\\%").replace("_", "\\_"))
+        like = f"%{escaped}%"
         query = query.filter(
-            Chargeback.id.like(like) | Chargeback.customer_id.like(like))
+            Chargeback.id.like(like, escape="\\")
+            | Chargeback.customer_id.like(like, escape="\\"))
     if band:
         query = (query.join(RiskPrediction,
                             RiskPrediction.case_id == Chargeback.id)
