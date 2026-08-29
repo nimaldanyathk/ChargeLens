@@ -5,10 +5,13 @@ picks up the isolated test database and never auto-seeds.
 """
 
 import os
-import tempfile
+import pathlib
 from datetime import datetime, timedelta
 
-_tmpdir = tempfile.mkdtemp(prefix="chargelens-test-")
+# keep the test database next to the project (the system temp dir may
+# live on a different, possibly full, volume)
+_tmpdir = pathlib.Path(__file__).resolve().parents[1] / ".tmp-tests"
+_tmpdir.mkdir(exist_ok=True)
 os.environ.setdefault(
     "CHARGELENS_DATABASE_URL", f"sqlite:///{_tmpdir}/test.db")
 os.environ.setdefault("CHARGELENS_AUTO_SEED", "false")
