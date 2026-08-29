@@ -29,14 +29,15 @@
       "val_roc_auc": 0.9305
     }
   ],
-  "calibration": "isotonic, fitted on validation",
+  "calibration": "isotonic, fitted on the calibration half of validation (split by customer)",
+  "threshold_tuning": "tuned on the disjoint tuning half of validation",
   "thresholds": {
-    "t_low": 0.09,
-    "t_high": 0.41,
+    "t_low": 0.07,
+    "t_high": 0.34,
     "precision_floor": 0.85,
     "max_low_band_abuse": 0.04
   },
   "n_features": 55,
   "seed": 42,
-  "trained_at": "2026-08-23T05:09:57+00:00"
+  "trained_at": "2026-08-23T06:00:20+00:00"
 }
