@@ -186,7 +186,8 @@ export default function Analytics() {
             </BarChart>
           </ResponsiveContainer>
           <div className="chart-note">
-            Negative = net recovery for the merchant. {cost.three_band_assumption}.
+            Absolute expected dispute cost under each policy — lower is
+            better. {cost.three_band_assumption}.
           </div>
         </div>
         <div className="card">
