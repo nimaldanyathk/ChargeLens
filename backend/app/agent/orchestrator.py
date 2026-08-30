@@ -88,6 +88,14 @@ def _summarize(result) -> str:
 def investigate(db: Session, case: Chargeback) -> Chargeback:
     scorer = get_scorer()
     case.status = "investigating"
+    if case.human_decision is not None:
+        # a re-investigation (e.g. of an escalated case) supersedes the
+        # previous decision - clear it explicitly and say so in the audit
+        _log(db, case.id, "system", "previous_decision_cleared",
+             {"was": case.human_decision, "note": case.human_decision_note})
+        case.human_decision = None
+        case.human_decision_note = None
+        case.human_decision_ts = None
     _log(db, case.id, "system", "investigation_started",
          {"reason": case.reason, "disputed_amount": case.disputed_amount})
 
