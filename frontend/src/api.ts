@@ -54,6 +54,16 @@ export interface Economics {
   };
 }
 
+export interface CE3 {
+  status: "qualified" | "requires_action" | "not_applicable";
+  reason_code: string;
+  matched_main: string[];
+  matched_secondary: string[];
+  qualifying_transactions: string[];
+  missing: string[];
+  note: string;
+}
+
 export interface Factor {
   feature: string;
   label: string;
@@ -112,6 +122,7 @@ export interface CaseDetail extends CaseSummary {
     risk_score: number; band: string; model_version: string;
     top_factors: Factor[]; scored_at: string | null;
     economics: Economics | null;
+    ce3: CE3 | null;
   } | null;
   evidence: EvidenceItemT[];
   audit: AuditEntry[];

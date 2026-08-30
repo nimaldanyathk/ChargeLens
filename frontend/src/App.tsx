@@ -6,12 +6,14 @@ import Dashboard from "./pages/Dashboard";
 import Cases from "./pages/Cases";
 import CaseDetailPage from "./pages/CaseDetail";
 import Analytics from "./pages/Analytics";
+import ROI from "./pages/ROI";
 import { ProfileSheet, Splash, Wordmark } from "./components/Wordmark";
 
 const PAGE_TITLES: [RegExp, string][] = [
   [/^\/cases\/.+/, "Dispute detail"],
   [/^\/cases/, "Disputes"],
   [/^\/analytics/, "Model performance"],
+  [/^\/roi/, "Recovery ROI"],
   [/^\//, "Overview"],
 ];
 
@@ -38,6 +40,13 @@ const ICONS = {
       <rect x="3" y="8.2" width="2.4" height="3.6" rx="0.7" stroke="currentColor" strokeWidth="1.3" />
       <rect x="6.8" y="5.4" width="2.4" height="6.4" rx="0.7" stroke="currentColor" strokeWidth="1.3" />
       <rect x="10.6" y="2.6" width="2.4" height="9.2" rx="0.7" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  ),
+  roi: (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.3" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M8 4.4 V11.6 M6.3 6.1 C6.3 5.3 7 4.8 8 4.8 C9 4.8 9.7 5.3 9.7 6 C9.7 7.6 6.3 7 6.3 8.6 C6.3 9.4 7 9.9 8 9.9 C9 9.9 9.7 9.4 9.7 8.7"
+            stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   ),
 };
@@ -81,6 +90,9 @@ export default function App() {
           </NavLink>
           <NavLink to="/analytics" className={navCls}>
             {ICONS.analytics}<span>Model performance</span>
+          </NavLink>
+          <NavLink to="/roi" className={navCls}>
+            {ICONS.roi}<span>Recovery ROI</span>
           </NavLink>
         </nav>
         <div className="sidebar-foot">
@@ -126,6 +138,7 @@ export default function App() {
             <Route path="/cases" element={<Cases />} />
             <Route path="/cases/:id" element={<CaseDetailPage />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/roi" element={<ROI />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

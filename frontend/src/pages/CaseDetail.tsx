@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { api, inr, pct, type CaseDetail, type Economics, type EvidenceItemT, type Factor } from "../api";
+import { api, inr, pct, type CaseDetail, type CE3, type Economics, type EvidenceItemT, type Factor } from "../api";
 import { BandBadge, DeadlineChip, RAIL_LABEL, REASON_LABEL, StatusBadge, fmtDate } from "../components/shared";
 
 const BAND_COLOR: Record<string, string> = {
@@ -80,6 +80,7 @@ export default function CaseDetailPage() {
         <div className="grid" style={{ gap: 14 }}>
           {risk && <RiskCard risk={risk} />}
           {risk?.economics && <EconomicsCard econ={risk.economics} caseId={data.case_id} rec={data.recommendation} />}
+          {risk?.ce3 && risk.ce3.status !== "not_applicable" && <CE3Card ce3={risk.ce3} />}
           {data.recommendation && (
             <RecommendationCard
               data={data} busy={busy} note={note} setNote={setNote} decide={decide}
@@ -89,6 +90,20 @@ export default function CaseDetailPage() {
       </div>
 
       {data.evidence.length > 0 && <EvidenceCard items={data.evidence} />}
+
+      {data.status !== "received" && (
+        <div className="banner banner-info" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <span style={{ flex: 1 }}>
+            Evidence dossier — a representment packet (summary, economics,
+            CE3.0 status, and every exhibit with its source) ready for
+            issuer review. Nothing is submitted automatically.
+          </span>
+          <a className="btn btn-primary" href={`/api/cases/${data.case_id}/dossier.pdf`}
+             target="_blank" rel="noreferrer">
+            Download dossier (PDF)
+          </a>
+        </div>
+      )}
 
       {data.generated_response && (
         <div className="card section-gap">
@@ -240,6 +255,55 @@ function FactorBars({ factors }: { factors: Factor[] }) {
       ))}
       <div className="chart-note">
         ▲ raises modelled risk (red) · ▼ lowers it (blue)
+      </div>
+    </div>
+  );
+}
+
+function CE3Card({ ce3 }: { ce3: CE3 }) {
+  const qualified = ce3.status === "qualified";
+  return (
+    <div className="card">
+      <h3>
+        Visa Compelling Evidence 3.0
+        <span className="h3-note">reason code {ce3.reason_code}</span>
+      </h3>
+      <div className={`rec-box ${qualified ? "contest" : "review"}`}>
+        <div className="rec-title" style={{ color: qualified ? "var(--good)" : "var(--warn)" }}>
+          {qualified ? "Qualified — liability shifts to issuer" : "Requires action"}
+        </div>
+        <div style={{ color: "var(--ink-2)" }}>{ce3.note}</div>
+      </div>
+      <dl className="kv" style={{ marginTop: 12 }}>
+        {ce3.matched_main.length > 0 && (
+          <>
+            <dt>Matched main elements</dt>
+            <dd>{ce3.matched_main.join(", ")}</dd>
+          </>
+        )}
+        {ce3.matched_secondary.length > 0 && (
+          <>
+            <dt>Matched secondary</dt>
+            <dd>{ce3.matched_secondary.join(", ")}</dd>
+          </>
+        )}
+        {ce3.qualifying_transactions.length > 0 && (
+          <>
+            <dt>Qualifying prior txns</dt>
+            <dd>{ce3.qualifying_transactions.join(", ")}</dd>
+          </>
+        )}
+        {ce3.missing.length > 0 && (
+          <>
+            <dt>Missing to qualify</dt>
+            <dd>{ce3.missing.join("; ")}</dd>
+          </>
+        )}
+      </dl>
+      <div className="chart-note">
+        CE3.0 needs two prior undisputed transactions (120–365 days) sharing
+        device/IP or address with the disputed one. Deterministic rules
+        check — not a model prediction.
       </div>
     </div>
   );
