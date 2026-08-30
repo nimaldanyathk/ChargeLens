@@ -137,9 +137,9 @@ export default function Analytics() {
         </div>
         <div className="card">
           <h3>Expected cost vs contest threshold (validation)</h3>
-          <ResponsiveContainer width="100%" height={230}>
+          <ResponsiveContainer width="100%" height={244}>
             <LineChart data={data.threshold_curve}
-                       margin={{ top: 8, right: 12, bottom: 4, left: 8 }}>
+                       margin={{ top: 26, right: 12, bottom: 4, left: 8 }}>
               <CartesianGrid stroke="var(--grid)" strokeWidth={1} />
               <XAxis dataKey="threshold" type="number" domain={[0, 1]} tick={AXIS} />
               <YAxis tick={AXIS} width={70}
@@ -148,10 +148,10 @@ export default function Analytics() {
                        labelFormatter={(v) => `threshold ${v}`} />
               <ReferenceLine x={m.thresholds.t_high} stroke="var(--critical)"
                              strokeDasharray="4 4"
-                             label={{ value: `t_high ${m.thresholds.t_high}`, fontSize: 11, fill: "var(--critical)", position: "top" }} />
+                             label={{ value: `t_high ${m.thresholds.t_high}`, fontSize: 11, fill: "var(--critical)", position: "insideTopLeft", dy: -14, dx: 2 }} />
               <ReferenceLine x={m.thresholds.t_low} stroke="var(--warning)"
                              strokeDasharray="4 4"
-                             label={{ value: `t_low ${m.thresholds.t_low}`, fontSize: 11, fill: "#7a5200", position: "top" }} />
+                             label={{ value: `t_low ${m.thresholds.t_low}`, fontSize: 11, fill: "#7a5200", position: "insideTopLeft", dy: -14, dx: 2 }} />
               <Line dataKey="expected_cost_inr" name="Expected cost (INR)"
                     stroke="var(--series-1)" strokeWidth={2} dot={false} />
             </LineChart>

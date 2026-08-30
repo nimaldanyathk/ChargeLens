@@ -39,20 +39,47 @@ def _rs(v) -> str:
         return str(v)
 
 
+def _wordmark(pdf: "FPDF", size: float = 15.0):
+    """Draw the ChargeLens brand: a blue rounded mark with a white 'C',
+    then 'charge' in ink + 'lens' in blue, at the current cursor."""
+    x0, y0 = pdf.get_x(), pdf.get_y()
+    h = size * 0.62
+    # brand mark
+    pdf.set_fill_color(*BLUE)
+    try:
+        pdf.rect(x0, y0, h, h, style="F", round_corners=True,
+                 corner_radius=h * 0.22)
+    except TypeError:                       # older fpdf without rounding
+        pdf.rect(x0, y0, h, h, style="F")
+    pdf.set_font("Helvetica", "B", size * 0.72)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_xy(x0, y0 - size * 0.02)
+    pdf.cell(h, h, "C", align="C")
+    # wordmark
+    pdf.set_xy(x0 + h + size * 0.22, y0 - size * 0.06)
+    pdf.set_font("Helvetica", "B", size)
+    pdf.set_text_color(*INK)
+    pdf.cell(pdf.get_string_width("charge"), h, "charge")
+    pdf.set_text_color(*BLUE)
+    pdf.cell(pdf.get_string_width("lens"), h, "lens")
+    pdf.set_xy(x0, y0 + h)
+
+
 class _Doc(FPDF):
     def header(self):
         if self.page_no() == 1:
             return
+        self.set_y(8)
+        _wordmark(self, size=9)
+        self.set_xy(self.l_margin, 9)
         self.set_font("Helvetica", "", 8)
         self.set_text_color(*MUTED)
-        self.cell(0, 8, f"ChargeLens evidence dossier - {self._case_id}",
-                  align="L")
-        self.cell(0, 8, f"Deadline: {self._respond_by}", align="R", new_x="LMARGIN",
-                  new_y="NEXT")
+        self.cell(0, 8, f"Evidence dossier - {self._case_id}", align="R",
+                  new_x="LMARGIN", new_y="NEXT")
         self.set_draw_color(*RULE)
         self.line(self.l_margin, self.get_y(), self.w - self.r_margin,
                   self.get_y())
-        self.ln(3)
+        self.ln(4)
 
     def footer(self):
         self.set_y(-14)
@@ -104,6 +131,22 @@ def build_dossier(case: Chargeback, detail: dict) -> bytes:
 
     pdf.set_auto_page_break(True, margin=18)
     pdf.add_page()
+
+    # ---- brand header ----------------------------------------------------
+    _wordmark(pdf, size=16)
+    pdf.set_xy(pdf.w - pdf.r_margin - 60, pdf.t_margin + 1)
+    pdf.set_font("Helvetica", "", 8)
+    pdf.set_text_color(*MUTED)
+    pdf.cell(60, 4, "Dispute intelligence", align="R",
+             new_x="LMARGIN", new_y="NEXT")
+    pdf.set_xy(pdf.w - pdf.r_margin - 60, pdf.t_margin + 5)
+    pdf.cell(60, 4, "Defense-only - human-in-the-loop", align="R")
+    pdf.set_xy(pdf.l_margin, pdf.t_margin + 13)
+    pdf.set_draw_color(*BLUE)
+    pdf.set_line_width(0.6)
+    pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
+    pdf.set_line_width(0.2)
+    pdf.ln(5)
 
     # ---- title -----------------------------------------------------------
     pdf.set_font("Helvetica", "B", 17)
