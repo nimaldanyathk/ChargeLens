@@ -39,30 +39,36 @@ def _rs(v) -> str:
         return str(v)
 
 
+_PT_MM = 0.3528   # points -> millimetres
+
+
 def _wordmark(pdf: "FPDF", size: float = 15.0):
-    """Draw the ChargeLens brand: a blue rounded mark with a white 'C',
-    then 'charge' in ink + 'lens' in blue, at the current cursor."""
+    """The ChargeLens wordmark: lowercase 'charge' in ink + 'lens' in
+    blue, with the signature blue underline under 'lens'. No icon - pure
+    type, matching the app's logo."""
     x0, y0 = pdf.get_x(), pdf.get_y()
-    h = size * 0.62
-    # brand mark
+    pdf.set_font("Helvetica", "B", size)
+    cap = size * _PT_MM * 0.72               # approx cap height in mm
+    baseline = y0 + cap
+    charge_w = pdf.get_string_width("charge")
+    lens_w = pdf.get_string_width("lens")
+
+    pdf.set_text_color(*INK)
+    pdf.text(x0, baseline, "charge")
+    pdf.set_text_color(*BLUE)
+    pdf.text(x0 + charge_w, baseline, "lens")
+
+    # signature underline beneath 'lens' only
+    thick = max(0.4, size * _PT_MM * 0.11)
+    uy = baseline + size * _PT_MM * 0.16
     pdf.set_fill_color(*BLUE)
     try:
-        pdf.rect(x0, y0, h, h, style="F", round_corners=True,
-                 corner_radius=h * 0.22)
-    except TypeError:                       # older fpdf without rounding
-        pdf.rect(x0, y0, h, h, style="F")
-    pdf.set_font("Helvetica", "B", size * 0.72)
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_xy(x0, y0 - size * 0.02)
-    pdf.cell(h, h, "C", align="C")
-    # wordmark
-    pdf.set_xy(x0 + h + size * 0.22, y0 - size * 0.06)
-    pdf.set_font("Helvetica", "B", size)
-    pdf.set_text_color(*INK)
-    pdf.cell(pdf.get_string_width("charge"), h, "charge")
-    pdf.set_text_color(*BLUE)
-    pdf.cell(pdf.get_string_width("lens"), h, "lens")
-    pdf.set_xy(x0, y0 + h)
+        pdf.rect(x0 + charge_w + 0.2, uy, lens_w - 0.3, thick,
+                 style="F", round_corners=True, corner_radius=thick / 2)
+    except TypeError:                        # older fpdf without rounding
+        pdf.rect(x0 + charge_w + 0.2, uy, lens_w - 0.3, thick, style="F")
+
+    pdf.set_xy(x0, uy + thick + 1.4)
 
 
 class _Doc(FPDF):
