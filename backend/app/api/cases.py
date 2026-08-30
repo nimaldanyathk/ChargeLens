@@ -62,31 +62,41 @@ class CaseIntake(BaseModel):
 @router.post("", status_code=201)
 def create_case(body: CaseIntake, db: Session = Depends(get_db)):
     """Register a chargeback case (no investigation happens until asked)."""
+    from sqlalchemy.exc import IntegrityError
+
     from ..seed import _mk_entities
 
+    # count() is only a starting guess; concurrent intakes can collide on
+    # it, so commit inside a small retry loop instead of trusting the check
     n = db.query(Chargeback).count()
-    case_id = f"CB-N{20_000 + n}"
-    while db.get(Chargeback, case_id) is not None:
-        n += 1
+    for attempt in range(5):
         case_id = f"CB-N{20_000 + n}"
-
-    row = {
-        **body.model_dump(),
-        "transaction_id": f"TXN-N{20_000 + n}",
-        "order_id": f"ORD-N{20_000 + n}",
-        "currency": "INR",
-        "payment_status": "captured",
-        "shipping_billing_match": int(
-            body.shipping_city.strip().lower()
-            == body.billing_city.strip().lower()),
-        "device_seen_before": int(body.device_seen_before),
-        "has_tracking": int(body.has_tracking),
-        "order_ts": None, "shipped_ts": None, "delivered_ts": None,
-        "claim_ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-    }
-    case = _mk_entities(db, row, case_id)
-    db.commit()
-    return case_detail(db, case)
+        if db.get(Chargeback, case_id) is not None:
+            n += 1
+            continue
+        row = {
+            **body.model_dump(),
+            "transaction_id": f"TXN-N{20_000 + n}",
+            "order_id": f"ORD-N{20_000 + n}",
+            "currency": "INR",
+            "payment_status": "captured",
+            "shipping_billing_match": int(
+                body.shipping_city.strip().lower()
+                == body.billing_city.strip().lower()),
+            "device_seen_before": int(body.device_seen_before),
+            "has_tracking": int(body.has_tracking),
+            "order_ts": None, "shipped_ts": None, "delivered_ts": None,
+            "claim_ts": datetime.now(timezone.utc)
+            .isoformat(timespec="seconds"),
+        }
+        try:
+            case = _mk_entities(db, row, case_id)
+            db.commit()
+            return case_detail(db, case)
+        except IntegrityError:
+            db.rollback()
+            n += 1
+    raise HTTPException(503, "could not allocate a case id; retry")
 
 
 @router.get("")
