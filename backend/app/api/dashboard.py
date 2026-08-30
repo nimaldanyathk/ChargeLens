@@ -6,8 +6,6 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from riskmodel.costs import WIN_RATE
-
 from ..database import get_db
 from ..models.entities import Chargeback, RiskPrediction
 
@@ -37,12 +35,23 @@ def dashboard(db: Session = Depends(get_db)):
     uninvestigated = (db.query(func.count(Chargeback.id))
                       .filter(Chargeback.status == "received").scalar() or 0)
 
-    # estimated recovery from approved contests (expected value, win-rate
-    # discounted - labelled as an estimate in the UI)
-    approved_contest_amount = (
-        db.query(func.coalesce(func.sum(Chargeback.disputed_amount), 0.0))
-        .filter(Chargeback.status == "approved",
-                Chargeback.recommendation == "contest").scalar())
+    # Expected recovery from every OPEN case the agent recommends
+    # contesting - the live opportunity in the queue, not just cases a
+    # human has already actioned. Uses each case's own economics
+    # (per-case win probability x amount) rather than a flat rate.
+    contest_preds = (
+        db.query(RiskPrediction)
+        .join(Chargeback, Chargeback.id == RiskPrediction.case_id)
+        .filter(Chargeback.status.in_(OPEN_STATUSES),
+                Chargeback.recommendation == "contest").all())
+    expected_recovery = 0.0
+    expected_ev = 0.0
+    contestable = 0
+    for p in contest_preds:
+        econ = p.economics or {}
+        expected_recovery += float(econ.get("expected_recovery_inr", 0.0))
+        expected_ev += float(econ.get("ev_contest_inr", 0.0))
+        contestable += 1
 
     return {
         "total_cases": total,
@@ -53,8 +62,10 @@ def dashboard(db: Session = Depends(get_db)):
         "awaiting_review": awaiting_review,
         "uninvestigated": uninvestigated,
         "open_exposure_inr": round(float(exposure or 0.0), 2),
-        "estimated_recovery_inr": round(
-            float(approved_contest_amount or 0.0) * WIN_RATE, 2),
-        "recovery_note": f"expected value of approved contests at "
-                         f"{WIN_RATE:.0%} representment win rate",
+        "estimated_recovery_inr": round(expected_recovery, 2),
+        "estimated_net_ev_inr": round(expected_ev, 2),
+        "contestable_cases": contestable,
+        "recovery_note": f"expected value across {contestable} open "
+                         f"case(s) the agent recommends contesting, using "
+                         f"each case's own win probability and amount",
     }

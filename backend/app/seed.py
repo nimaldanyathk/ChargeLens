@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import sys
 import zlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
@@ -67,7 +67,8 @@ def _parse_ts(v) -> datetime | None:
     return datetime.fromisoformat(str(v))
 
 
-def _mk_entities(db, row: dict, case_id: str) -> Chargeback:
+def _mk_entities(db, row: dict, case_id: str,
+                 demo_deadline_now: datetime | None = None) -> Chargeback:
     """Create the relational records for one raw case row."""
     # crc32 (not the salted built-in hash) keeps seeding deterministic
     rng = np.random.default_rng(zlib.crc32(case_id.encode()))
@@ -141,8 +142,17 @@ def _mk_entities(db, row: dict, case_id: str) -> Chargeback:
     else:
         network = "npci" if rail == "upi" else rail
     claim_ts = _parse_ts(row.get("claim_ts"))
-    respond_by = (claim_ts + timedelta(days=7 if rail == "upi" else 10)
-                  if claim_ts else None)
+    if demo_deadline_now is not None:
+        # Demo seeding: the fixed historical claim dates would put every
+        # response deadline in the past. Anchor a realistic spread around
+        # "now" instead (some already lapsed, most still open) so the
+        # deadline-first queue is meaningful. Real disputes (webhook/API)
+        # keep the issuer's actual respond_by.
+        offset_days = float(rng.uniform(-1.5, 9.5))
+        respond_by = demo_deadline_now + timedelta(days=offset_days)
+    else:
+        respond_by = (claim_ts + timedelta(days=7 if rail == "upi" else 10)
+                      if claim_ts else None)
 
     case = Chargeback(
         id=case_id, customer_id=cust_id, transaction_id=txn.id,
@@ -272,15 +282,21 @@ def seed(investigate_background: bool = True) -> dict:
                      replace=False)
     sample = test_df.iloc[idx]
 
+    # anchor demo deadlines around the seeding moment so the queue shows a
+    # realistic spread of response windows (see _mk_entities)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
     db = SessionLocal()
     created: list[str] = []
     try:
         for _, row in sample.iterrows():
-            case = _mk_entities(db, row.to_dict(), row["case_id"])
+            case = _mk_entities(db, row.to_dict(), row["case_id"],
+                                demo_deadline_now=now)
             created.append(case.id)
         for row in demo_rows():
             n = len([c for c in created if c.startswith("CB-DEMO")]) + 1
-            case = _mk_entities(db, row, f"CB-DEMO-{n}")
+            case = _mk_entities(db, row, f"CB-DEMO-{n}",
+                                demo_deadline_now=now)
             created.append(case.id)
         db.commit()
 
