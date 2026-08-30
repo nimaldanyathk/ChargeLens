@@ -50,11 +50,14 @@ export default function Dashboard() {
           <div className="footnote">Sum of disputed amounts across open cases.</div>
         </div>
         <div className="card">
-          <h3>Expected recovery from approved contests</h3>
+          <h3>Expected recovery from recommended contests</h3>
           <div className="stat-value" style={{ fontSize: 24, color: "var(--good)" }}>
             {inr(dash.estimated_recovery_inr)}
           </div>
-          <div className="footnote">Estimate — {dash.recovery_note}.</div>
+          <div className="footnote">
+            Estimate — {dash.recovery_note}. Net of contest cost:{" "}
+            {inr(dash.estimated_net_ev_inr)}.
+          </div>
         </div>
       </div>
 

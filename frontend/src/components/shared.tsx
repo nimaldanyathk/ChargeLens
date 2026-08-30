@@ -7,11 +7,10 @@ const BAND_META: Record<string, { label: string; cls: string }> = {
 };
 
 export function BandBadge({ band, score }: { band: string | null; score?: number | null }) {
-  if (!band) return <span className="badge badge-neutral"><span className="dot" />Not scored</span>;
+  if (!band) return <span className="badge badge-neutral">Not scored</span>;
   const meta = BAND_META[band] ?? { label: band, cls: "badge-neutral" };
   return (
     <span className={`badge ${meta.cls}`}>
-      <span className="dot" />
       {meta.label}
       {score != null && ` · ${(score * 100).toFixed(0)}%`}
     </span>
@@ -35,7 +34,6 @@ export function StatusBadge({ status }: { status: string }) {
     : "badge-neutral";
   return (
     <span className={`badge ${cls}`}>
-      <span className="dot" />
       {STATUS_LABEL[status] ?? status}
     </span>
   );
@@ -74,20 +72,20 @@ export const RAIL_LABEL: Record<string, string> = {
 export function DeadlineChip({ respondBy, status }: {
   respondBy: string | null; status: string;
 }) {
-  if (!respondBy) return <span className="badge badge-neutral"><span className="dot" />No deadline</span>;
+  if (!respondBy) return <span className="badge badge-neutral">No deadline</span>;
   const decided = ["approved", "rejected"].includes(status);
   const msLeft = new Date(respondBy).getTime() - Date.now();
   const daysLeft = msLeft / 86_400_000;
   if (decided) {
-    return <span className="badge badge-neutral"><span className="dot" />Responded</span>;
+    return <span className="badge badge-neutral">Responded</span>;
   }
   if (msLeft <= 0) {
-    return <span className="badge badge-high"><span className="dot" />Deadline passed</span>;
+    return <span className="badge badge-high">Deadline passed</span>;
   }
   const label = daysLeft >= 1
     ? `${Math.floor(daysLeft)}d left`
     : `${Math.max(1, Math.floor(msLeft / 3_600_000))}h left`;
   const cls = daysLeft < 2 ? "badge-high"
     : daysLeft < 5 ? "badge-review" : "badge-low";
-  return <span className={`badge ${cls}`}><span className="dot" />{label}</span>;
+  return <span className={`badge ${cls}`}>{label}</span>;
 }

@@ -138,6 +138,8 @@ export interface Dashboard {
   uninvestigated: number;
   open_exposure_inr: number;
   estimated_recovery_inr: number;
+  estimated_net_ev_inr: number;
+  contestable_cases: number;
   recovery_note: string;
 }
 

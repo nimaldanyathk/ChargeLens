@@ -78,7 +78,6 @@ export default function App() {
         <div className="brand"
              style={{ visibility: phase === "done" ? "visible" : "hidden" }}>
           <Wordmark />
-          <div className="brand-tag">Dispute intelligence</div>
         </div>
         <nav className="nav-group">
           <div className="nav-label">Risk console</div>
@@ -96,6 +95,7 @@ export default function App() {
           </NavLink>
         </nav>
         <div className="sidebar-foot">
+          <div className="sidebar-tagline">Dispute intelligence</div>
           Synthetic demo data
           <br />
           Defense-only · human-in-the-loop
