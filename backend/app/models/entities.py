@@ -154,6 +154,7 @@ class RiskPrediction(Base):
     band: Mapped[str] = mapped_column(String(12))
     top_factors: Mapped[list] = mapped_column(JSON)
     economics: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    ce3: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     case: Mapped[Chargeback] = relationship(back_populates="prediction")

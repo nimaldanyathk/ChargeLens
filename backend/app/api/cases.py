@@ -145,6 +145,24 @@ def investigate_case(case_id: str, db: Session = Depends(get_db)):
     return case_detail(db, case)
 
 
+@router.get("/{case_id}/dossier.pdf")
+def dossier_pdf(case_id: str, db: Session = Depends(get_db)):
+    """One-click evidence dossier PDF for issuer review."""
+    from fastapi.responses import Response
+
+    from ..evidence.dossier import build_dossier
+
+    case = db.get(Chargeback, case_id)
+    if case is None:
+        raise HTTPException(404, f"case {case_id} not found")
+    detail = case_detail(db, case)
+    pdf = build_dossier(case, detail)
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition":
+                 f'inline; filename="dossier-{case_id}.pdf"'})
+
+
 @router.get("/{case_id}/contest-payload")
 def contest_payload(case_id: str, db: Session = Depends(get_db)):
     """Contest-ready payload matching Razorpay's real

@@ -103,6 +103,7 @@ def case_detail(db: Session, case: Chargeback) -> dict:
             "top_factors": pred.top_factors,
             "scored_at": _ts(pred.created_at),
             "economics": pred.economics,
+            "ce3": pred.ce3,
         } if pred else None,
         "evidence": [{
             "key": e.key, "statement": e.statement, "value": e.value,

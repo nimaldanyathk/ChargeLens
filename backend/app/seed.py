@@ -235,6 +235,29 @@ def demo_rows() -> list[dict]:
          "delivered_ts": (base_order + timedelta(days=5)).isoformat(),
          "claim_ts": (base_order + timedelta(days=8)).isoformat(),
          "claim_delay_days": 3.0},
+        # DEMO 4 - card-absent fraud claim (Visa 10.4) on a long-standing
+        # account, same device and local IP: qualifies for CE3.0
+        {**common,
+         "customer_id": "CUST-DEMO-6602", "transaction_id": "TXN-DEMO-44120",
+         "order_id": "ORD-DEMO-61885",
+         "chargeback_reason": "unauthorized_transaction",
+         "claim_description": "I did not authorise this transaction.",
+         "disputed_amount": 64_900.0, "payment_method": "credit_card",
+         "product_category": "electronics", "product_name": "iPhone 15",
+         "quantity": 1, "shipping_city": "Hyderabad",
+         "billing_city": "Hyderabad", "shipping_billing_match": 1,
+         "account_age_days": 830.0, "previous_orders": 24,
+         "previous_chargebacks": 0, "previous_returns": 2,
+         "previous_failed_payments": 0, "avg_order_value": 9_200.0,
+         "delivery_status": "delivered", "delivery_confirmation": "signed",
+         "has_tracking": 1, "days_to_deliver": 2.0,
+         "device_seen_before": 1, "device_shared_accounts": 0,
+         "ip_geo_distance_km": 6.0, "txns_last_24h": 1,
+         "order_ts": base_order.isoformat(),
+         "shipped_ts": (base_order + timedelta(days=1)).isoformat(),
+         "delivered_ts": (base_order + timedelta(days=3)).isoformat(),
+         "claim_ts": (base_order + timedelta(days=15)).isoformat(),
+         "claim_delay_days": 12.0},
     ]
 
 

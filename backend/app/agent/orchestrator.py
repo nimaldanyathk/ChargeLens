@@ -13,6 +13,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from ..decision import economics
+from ..evidence import ce3 as ce3_mod
 from ..evidence.engine import collect_evidence, merchant_strength
 from ..llm.generator import generate_response_text
 from ..models.entities import (
@@ -138,18 +139,29 @@ def investigate(db: Session, case: Chargeback) -> Chargeback:
     econ = economics.evaluate(
         case.disputed_amount, result["risk_score"],
         merchant_strength(evidence), case.reason)
+
+    # Visa CE3.0 eligibility (fraud disputes only) - a rules check that
+    # can shift liability to the issuer
+    ce3_result = ce3_mod.evaluate(case, customer, txn).dict()
+
     db.query(RiskPrediction).filter(
         RiskPrediction.case_id == case.id).delete()
     db.add(RiskPrediction(
         case_id=case.id, model_version=result["model_version"],
         risk_score=result["risk_score"], band=result["band"],
-        top_factors=result["top_factors"], economics=econ))
+        top_factors=result["top_factors"], economics=econ, ce3=ce3_result))
     _log(db, case.id, "agent", "economics_computed", {
         "p_win": econ["p_win"],
         "ev_contest_inr": econ["ev_contest_inr"],
         "break_even_p_win": econ["break_even_p_win"],
         "economic": econ["economic"],
     })
+    if ce3_result["status"] != "not_applicable":
+        _log(db, case.id, "agent", "ce3_evaluated", {
+            "status": ce3_result["status"],
+            "matched_main": ce3_result["matched_main"],
+            "matched_secondary": ce3_result["matched_secondary"],
+        })
 
     # recommendation (policy layer, evidence- and economics-gated)
     recommendation, reason = recommend(
