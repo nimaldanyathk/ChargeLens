@@ -7,11 +7,14 @@ retrieved records.
    and record fields. Always available, always grounded by construction.
 2. `claude` (optional, needs CHARGELENS_ANTHROPIC_API_KEY) - drafts a
    more natural letter from a fact sheet, then passes through
-   `grounding_check`: every number, date, and identifier in the draft
-   must appear in the fact sheet, otherwise the draft is discarded and
-   the deterministic text is used instead. A refusal or any API error
-   also falls back. The LLM can therefore change the wording, never the
-   facts.
+   `grounding_check`: every numeric token and identifier in the draft
+   (except the very smallest counts, 0-3) must appear in the trusted
+   facts, otherwise the draft is discarded and the deterministic text is
+   used instead. A refusal or any API error also falls back. Scope is
+   stated honestly: the check validates numbers and IDs, not qualitative
+   phrasing - which is why the deterministic generator remains the
+   default, the system prompt forbids invention, and every response
+   still passes a human before anything is submitted.
 """
 
 from __future__ import annotations
