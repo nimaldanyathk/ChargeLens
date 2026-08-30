@@ -72,7 +72,8 @@ def _mk_entities(db, row: dict, case_id: str) -> Chargeback:
     # crc32 (not the salted built-in hash) keeps seeding deterministic
     rng = np.random.default_rng(zlib.crc32(case_id.encode()))
     cust_id = row["customer_id"]
-    if db.get(Customer, cust_id) is None:
+    existing = db.get(Customer, cust_id)
+    if existing is None:
         db.add(Customer(
             id=cust_id,
             account_age_days=float(row["account_age_days"]),
@@ -81,6 +82,15 @@ def _mk_entities(db, row: dict, case_id: str) -> Chargeback:
             previous_returns=int(row["previous_returns"]),
             previous_failed_payments=int(row["previous_failed_payments"]),
             avg_order_value=float(row["avg_order_value"])))
+    else:
+        # a repeat customer arrives with fresher history - keep it current
+        existing.account_age_days = float(row["account_age_days"])
+        existing.previous_orders = int(row["previous_orders"])
+        existing.previous_chargebacks = int(row["previous_chargebacks"])
+        existing.previous_returns = int(row["previous_returns"])
+        existing.previous_failed_payments = int(
+            row["previous_failed_payments"])
+        existing.avg_order_value = float(row["avg_order_value"])
 
     txn = Transaction(
         id=row["transaction_id"], customer_id=cust_id,
