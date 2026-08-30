@@ -86,6 +86,34 @@ discipline, not real-world performance — the model card says so, and
 the demo says so. The methodology (leak-free splits, calibration before
 thresholding, cost-based tuning) is the part that transfers.
 
+## The safety layer is measured, not asserted
+
+The response drafter is the only place an LLM writes text, and the claim
+the disputing customer types is the one input an attacker controls. Both
+risks are measured, and the numbers run in CI so a regression fails the
+build (`python -m scripts.eval_safety` prints them):
+
+- **Grounding gate** — a perturbation benchmark corrupts 100 clean
+  drafts across a fact-level taxonomy (swapped amounts, dates, IDs,
+  fabricated quantities, unsupported numbers). The numeric/identifier
+  gate catches **100% of in-scope corruptions with a 0% false-block
+  rate**. It honestly reports what it cannot see: a purely qualitative
+  fabrication introduces no new number or ID, so that family is counted
+  separately as out-of-scope rather than excluded to inflate the
+  headline — which is exactly why the deterministic generator is the
+  default and a human reviews every letter.
+- **Injection red-team** — 17 hostile `claim_description` fixtures
+  across 8 families (direct override, fake system tags, fence-break,
+  markdown/HTML smuggling, base64/leetspeak encoding, zero-width
+  smuggling, Hinglish, and authority/urgency social engineering) run
+  through the full pipeline. **Attack success rate: 0%.** An attack
+  "succeeds" if it plants a canary, flips the recommendation, breaks the
+  untrusted-text fence, or launders a fabricated number into the
+  grounding allow-list. Defenses: NFKC canonicalization, control- and
+  zero-width-character stripping, datamarking/spotlighting, and a
+  per-request random boundary fence around all customer text
+  (`app/llm/hardening.py`).
+
 ## Where AI is used — and where it deliberately isn't
 
 - **Scoring**: a GBM, not an LLM. Dispute risk needs calibrated,
@@ -114,6 +142,16 @@ thresholding, cost-based tuning) is the part that transfers.
   evidence categories (`shipping_proof`, `billing_proof`,
   `access_activity_log`, …). With test keys configured it can be sent;
   without them it is an inspectable dry run.
+
+See a dispute arrive live: start the server with a webhook secret and
+fire a correctly-signed event —
+
+```bash
+CHARGELENS_RZP_WEBHOOK_SECRET=whsec_demo ./scripts/simulate_webhook.sh
+```
+
+— then refresh the queue; the new dispute appears with its `respond_by`
+countdown. A forged signature is rejected with 401.
 
 Environment: `CHARGELENS_RZP_WEBHOOK_SECRET` (webhook verification),
 `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` (connected mode, optional),
