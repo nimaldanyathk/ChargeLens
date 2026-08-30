@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import timezone
+
 from sqlalchemy.orm import Session
 
 from ..models.entities import (
@@ -10,7 +12,14 @@ from ..models.entities import (
 
 
 def _ts(dt) -> str | None:
-    return dt.isoformat(timespec="seconds") if dt else None
+    """Serialize as explicit UTC. SQLite returns naive datetimes; all of
+    ours are stored in UTC, so stamp the offset instead of letting the
+    client guess (a bare ISO string parses as local time in JS)."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat(timespec="seconds")
 
 
 def case_summary(case: Chargeback) -> dict:
