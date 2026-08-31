@@ -4,7 +4,7 @@ import {
   Tooltip, XAxis, YAxis, ReferenceLine, BarChart, Bar, Cell,
 } from "recharts";
 import { api, inr, pct, type Analytics as AnalyticsT } from "../api";
-import { Tile } from "../components/shared";
+import { Stat } from "../components/shared";
 
 const AXIS = { stroke: "var(--baseline)", fontSize: 11, fill: "var(--muted)" };
 
@@ -34,7 +34,7 @@ export default function Analytics() {
 
   return (
     <>
-      <h1 className="page-title">Model analytics</h1>
+      <h1 className="page-title">Model performance</h1>
       <p className="page-sub">
         Every number on this page was measured by the evaluation pipeline on
         the held-out test split — nothing is hand-entered.
@@ -42,13 +42,13 @@ export default function Analytics() {
 
       <div className="banner banner-info">{m.disclosure}</div>
 
-      <div className="grid tiles">
-        <Tile label="Precision (contest)" value={pct(cd.precision)} note={`at t_high = ${m.thresholds.t_high}`} />
-        <Tile label="Recall (contest)" value={pct(cd.recall)} />
-        <Tile label="F1" value={pct(cd.f1)} />
-        <Tile label="False-positive rate" value={pct(cd.false_positive_rate)} />
-        <Tile label="ROC-AUC" value={m.threshold_free.roc_auc.toFixed(3)} />
-        <Tile label="PR-AUC" value={m.threshold_free.pr_auc.toFixed(3)} />
+      <div className="stat-strip">
+        <Stat label="Precision (contest)" value={pct(cd.precision)} note={`at t_high = ${m.thresholds.t_high}`} />
+        <Stat label="Recall (contest)" value={pct(cd.recall)} />
+        <Stat label="F1" value={pct(cd.f1)} />
+        <Stat label="False-positive rate" value={pct(cd.false_positive_rate)} />
+        <Stat label="ROC-AUC" value={m.threshold_free.roc_auc.toFixed(3)} />
+        <Stat label="PR-AUC" value={m.threshold_free.pr_auc.toFixed(3)} />
       </div>
 
       <div className="grid two-col section-gap">
@@ -288,10 +288,10 @@ function ConfusionMatrix({ tp, fp, fn, tn }: { tp: number; fp: number; fn: numbe
   // sequential blue ramp: tint by magnitude, ink switches for dark cells
   const cell = (n: number) => {
     const t = n / max;
-    const bg = ["#f1f6fd", "#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf"][
+    const bg = ["#f2f5ff", "#dde5ff", "#b8c8ff", "#8aa4ff", "#5c7dff", "#3a5fe6"][
       Math.min(5, Math.floor(t * 6))
     ];
-    const ink = t > 0.5 ? "#fff" : "var(--ink)";
+    const ink = t > 0.5 ? "#fff" : "var(--ink-strong)";
     return { background: bg, color: ink };
   };
   return (

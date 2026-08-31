@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, inr, type CaseSummary, type Dashboard as DashboardT } from "../api";
-import { BandBadge, REASON_LABEL, StatusBadge, Tile, fmtDate } from "../components/shared";
+import { BandBadge, REASON_LABEL, Stat, StatusBadge, fmtDate } from "../components/shared";
 
 export default function Dashboard() {
   const [dash, setDash] = useState<DashboardT | null>(null);
@@ -23,60 +23,48 @@ export default function Dashboard() {
 
   return (
     <>
-      <h1 className="page-title">Dispute overview</h1>
+      <h1 className="page-title">Disputes overview</h1>
       <p className="page-sub">
-        Live state of the chargeback queue. Recommendations are advisory —
-        every action requires merchant approval.
+        Recommendations are advisory — no dispute is contested, accepted or
+        refunded without your approval.
       </p>
 
-      <div className="grid tiles">
-        <Tile label="Open cases" value={dash.open_cases} note={`${dash.total_cases} total`} />
-        <Tile label="High risk" value={dash.high_risk} note="recommend contest" />
-        <Tile label="Needs review" value={dash.review_band} note="uncertainty band" />
-        <Tile label="Low risk" value={dash.low_risk} note="likely legitimate" />
-        <Tile label="Awaiting your decision" value={dash.awaiting_review} />
-        <Tile label="Not yet investigated" value={dash.uninvestigated} />
+      <div className="stat-strip">
+        <Stat label="Open disputes" value={dash.open_cases} note={`${dash.total_cases} total`} />
+        <Stat label="High risk" value={dash.high_risk} note="contest recommended" />
+        <Stat label="Needs review" value={dash.review_band} note="uncertainty band" />
+        <Stat label="Low risk" value={dash.low_risk} note="likely legitimate" />
+        <Stat label="Awaiting decision" value={dash.awaiting_review} />
+        <Stat label="Not investigated" value={dash.uninvestigated} />
       </div>
 
       <div className="grid two-col section-gap">
         <div className="card">
-          <h3>Financial exposure</h3>
-          <div className="risk-hero">
-            <div>
-              <div className="tile-label">Open disputed amount</div>
-              <div className="tile-value">{inr(dash.open_exposure_inr)}</div>
-            </div>
-            <div>
-              <div className="tile-label">Estimated recovery (approved contests)</div>
-              <div className="tile-value" style={{ color: "var(--good-text)" }}>
-                {inr(dash.estimated_recovery_inr)}
-              </div>
-              <div className="tile-note">{dash.recovery_note}</div>
-            </div>
-          </div>
+          <h3>Amount under dispute</h3>
+          <div className="stat-value" style={{ fontSize: 24 }}>{inr(dash.open_exposure_inr)}</div>
+          <div className="footnote">Sum of disputed amounts across open cases.</div>
         </div>
         <div className="card">
-          <h3>How to read this</h3>
-          <p style={{ margin: 0, color: "var(--ink-2)" }}>
-            Each case is scored by a calibrated XGBoost model trained on
-            synthetic dispute data, then gated by an evidence policy: a high
-            score alone never triggers a contest recommendation without
-            strong contradicting evidence on file. Bands come from
-            cost-tuned thresholds — see Model analytics for the held-out
-            metrics behind them.
-          </p>
+          <h3>Expected recovery from approved contests</h3>
+          <div className="stat-value" style={{ fontSize: 24, color: "var(--good)" }}>
+            {inr(dash.estimated_recovery_inr)}
+          </div>
+          <div className="footnote">Estimate — {dash.recovery_note}.</div>
         </div>
       </div>
 
       <div className="card section-gap">
-        <h3>Awaiting your decision</h3>
+        <h3>
+          Needs your decision
+          <span className="h3-note">investigated by the agent, waiting on you</span>
+        </h3>
         {queue.length === 0 ? (
           <p style={{ color: "var(--muted)" }}>Nothing waiting.</p>
         ) : (
           <table className="data">
             <thead>
               <tr>
-                <th>Case</th><th>Reason</th><th className="num">Amount</th>
+                <th>Dispute</th><th>Reason</th><th className="num">Amount</th>
                 <th>Risk</th><th>Recommendation</th><th>Status</th><th>Claimed</th>
               </tr>
             </thead>
@@ -103,6 +91,11 @@ export default function Dashboard() {
             </tbody>
           </table>
         )}
+        <div className="footnote">
+          Scores come from a calibrated model with cost-tuned thresholds; a
+          high score alone never triggers a contest recommendation without
+          strong evidence on file. Details under Model performance.
+        </div>
       </div>
     </>
   );
