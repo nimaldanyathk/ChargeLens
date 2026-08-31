@@ -42,6 +42,7 @@ from xgboost import XGBClassifier
 
 from .calibration import IsotonicCalibratedModel
 from .costs import expected_cost
+from .ensemble import SoftVoteEnsemble
 from .features import FEATURE_COLUMNS, build_features
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -51,7 +52,7 @@ ARTIFACT_DIR = BACKEND_DIR / "artifacts"
 SEED = 42
 PRECISION_FLOOR = 0.85       # never auto-contest with worse precision than this
 MAX_LOW_BAND_ABUSE = 0.04    # auto-accept band must stay >= 96% legitimate
-MODEL_VERSION = "1.0.0"
+MODEL_VERSION = "1.1.0"
 
 
 def load_split(split: str) -> pd.DataFrame:
@@ -149,6 +150,18 @@ def main():
             "val_roc_auc": round(float(roc_auc_score(y_val, p)), 4),
         })
         fitted[name] = model
+
+    # soft-vote ensemble over the fitted tree models (no refit needed)
+    tree_members = ["xgboost_depth3", "xgboost_depth5", "random_forest"]
+    ens = SoftVoteEnsemble([fitted[n] for n in tree_members], tree_members)
+    p = ens.predict_proba(X_val)[:, 1]
+    leaderboard.append({
+        "model": "soft_vote(xgb3+xgb5+rf)",
+        "val_pr_auc": round(float(average_precision_score(y_val, p)), 4),
+        "val_roc_auc": round(float(roc_auc_score(y_val, p)), 4),
+    })
+    fitted["soft_vote(xgb3+xgb5+rf)"] = ens
+
     leaderboard.sort(key=lambda r: r["val_pr_auc"], reverse=True)
     winner_name = leaderboard[0]["model"]
     winner = fitted[winner_name]

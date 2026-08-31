@@ -22,11 +22,37 @@ BACKGROUND_N = 200
 SAMPLE_N = 1500
 
 
+class _EnsembleExplainer:
+    """SHAP for a soft-vote ensemble: Shapley values are linear in the
+    model, so the attribution of the average model is exactly the average
+    of the members' attributions - no approximation involved."""
+
+    def __init__(self, members):
+        import shap
+        self.explainers = [shap.TreeExplainer(m) for m in members]
+
+    def shap_values(self, X):
+        mats = [_normalize_shap(e.shap_values(X)) for e in self.explainers]
+        return np.mean(mats, axis=0)
+
+
+def _normalize_shap(values) -> np.ndarray:
+    if isinstance(values, list):          # RandomForest: [class0, class1]
+        values = values[1]
+    values = np.asarray(values)
+    if values.ndim == 3:                   # (n, features, classes)
+        values = values[:, :, 1]
+    return values
+
+
 def make_explainer(model, background: pd.DataFrame):
-    """Build a SHAP explainer for either a tree model or the LR pipeline."""
+    """Build a SHAP explainer for a tree model, the soft-vote ensemble,
+    or the LR pipeline."""
     import shap
 
     base = model.base_model
+    if base.__class__.__name__ == "SoftVoteEnsemble":
+        return _EnsembleExplainer(base.members)
     if hasattr(base, "get_booster") or base.__class__.__name__ in (
             "RandomForestClassifier", "XGBClassifier"):
         return shap.TreeExplainer(base)
@@ -39,13 +65,7 @@ def make_explainer(model, background: pd.DataFrame):
 
 def shap_values_matrix(explainer, X: pd.DataFrame) -> np.ndarray:
     """Return (n, n_features) SHAP values for the positive class."""
-    values = explainer.shap_values(X)
-    if isinstance(values, list):          # RandomForest: [class0, class1]
-        values = values[1]
-    values = np.asarray(values)
-    if values.ndim == 3:                   # (n, features, classes)
-        values = values[:, :, 1]
-    return values
+    return _normalize_shap(explainer.shap_values(X))
 
 
 def main():
