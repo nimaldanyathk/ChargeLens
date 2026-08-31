@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api, inr, type CaseSummary, type Dashboard as DashboardT } from "../api";
 import { BandBadge, REASON_LABEL, StatusBadge, Tile, fmtDate } from "../components/shared";
 
@@ -82,8 +82,16 @@ export default function Dashboard() {
             </thead>
             <tbody>
               {queue.map((c) => (
-                <tr key={c.case_id} className="rowlink" onClick={() => navigate(`/cases/${c.case_id}`)}>
-                  <td><a href={`/cases/${c.case_id}`} onClick={(e) => e.preventDefault()}>{c.case_id}</a></td>
+                <tr
+                  key={c.case_id} className="rowlink"
+                  onClick={(e) => {
+                    if (e.metaKey || e.ctrlKey) return;
+                    const t = e.target as HTMLElement;
+                    if (t.closest("a")) return;
+                    navigate(`/cases/${c.case_id}`);
+                  }}
+                >
+                  <td><Link to={`/cases/${c.case_id}`}>{c.case_id}</Link></td>
                   <td>{REASON_LABEL[c.reason] ?? c.reason}</td>
                   <td className="num">{inr(c.disputed_amount)}</td>
                   <td><BandBadge band={c.band} score={c.risk_score} /></td>

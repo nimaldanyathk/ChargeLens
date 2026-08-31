@@ -20,6 +20,7 @@ export default function Cases() {
     if (band) filter.band = band;
     if (q) filter.q = q;
     setLoading(true);
+    setError(null);
     api.cases(filter)
       .then((r) => setCases(r.cases))
       .catch((e) => setError(String(e)))
