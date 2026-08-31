@@ -36,6 +36,58 @@ hot-reloading UI on :5173 proxying to the API.
 All data is synthetic (5,000 generated cases; see
 `backend/data/manifest.json`). No real customer data anywhere.
 
+## Architecture
+
+```mermaid
+flowchart TB
+    form["Manual intake form"]:::src
+    wh["Razorpay webhook<br/>payment.dispute.*<br/>HMAC-verified (raw body)"]:::src
+    form --> case
+    wh --> case
+    case(["Chargeback case"]):::case
+
+    subgraph agent["Investigation agent — bounded, read-only"]
+      direction TB
+      tools["Read-only tools<br/>transaction · order · delivery<br/>customer history · prior claims"]:::tool
+      score["Risk scorer<br/>gradient boosting + isotonic calibration<br/>per-case SHAP"]:::ml
+      ev["Evidence engine<br/>every item cites a source record"]:::ml
+      econ["Dispute economics<br/>per-case expected value<br/>win-prob = calibrated × cap × evidence"]:::ml
+      ce3["Visa CE 3.0 checker<br/>liability-shift eligibility"]:::ml
+      draft["Response drafting<br/>deterministic default + optional LLM<br/>grounding gate · injection hardening"]:::ml
+      tools --> score --> econ --> ce3
+      tools --> ev --> draft
+    end
+    case --> agent
+
+    agent --> review{{"Human decision<br/>approve · reject · escalate"}}:::human
+    review --> contest["Contest payload<br/>Razorpay PATCH /disputes/:id/contest"]:::out
+    review --> pdf["Evidence dossier PDF"]:::out
+    review --> rec["Outcome recorded"]:::out
+
+    audit[("Audit trail<br/>every step · actor · tool call")]:::audit
+    agent -.-> audit
+    review -.-> audit
+
+    guard["Guardrails: no refund / ban / record edit /<br/>auto-submit — structurally unreachable"]:::guard
+    guard -.- agent
+
+    classDef src fill:#eef2ff,stroke:#305eff,color:#1e3a99;
+    classDef case fill:#ffffff,stroke:#8494ac,color:#213554;
+    classDef ml fill:#ffffff,stroke:#dde3ec,color:#213554;
+    classDef human fill:#fdf4e3,stroke:#b96d00,color:#7a4c00;
+    classDef out fill:#e9f7ef,stroke:#0f8a4c,color:#0f8a4c;
+    classDef audit fill:#f1f3f7,stroke:#8494ac,color:#5a6b85;
+    classDef guard fill:#fdecec,stroke:#c4302f,color:#c4302f;
+```
+
+The scorer is a calibrated GBM, not an LLM — dispute risk needs auditable
+probabilities and per-feature attributions. The only LLM step is drafting
+language, and it is gated: the grounding check discards any draft that
+introduces a number or identifier not on the record, falling back to the
+deterministic letter. A human approves every action; the agent's tool
+registry is the sole dispatch path, so money movement and record edits
+are unreachable rather than merely forbidden.
+
 ## What happens to a dispute
 
 1. **Intake** — a case arrives via the UI form or the Razorpay
