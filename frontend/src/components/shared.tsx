@@ -41,12 +41,12 @@ export function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function Tile({ label, value, note }: { label: string; value: string | number; note?: string }) {
+export function Stat({ label, value, note }: { label: string; value: string | number; note?: string }) {
   return (
-    <div className="card tile">
-      <div className="tile-label">{label}</div>
-      <div className="tile-value">{value}</div>
-      {note && <div className="tile-note">{note}</div>}
+    <div className="stat">
+      <div className="stat-label">{label}</div>
+      <div className="stat-value">{value}</div>
+      {note && <div className="stat-note">{note}</div>}
     </div>
   );
 }
