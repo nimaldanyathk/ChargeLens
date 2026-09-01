@@ -50,24 +50,24 @@ export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [splashHiding, setSplashHiding] = useState(false);
-  const [splashDone, setSplashDone] = useState(false);
+  const [phase, setPhase] = useState<"in" | "fly" | "done">("in");
   const title =
     PAGE_TITLES.find(([re]) => re.test(location.pathname))?.[1] ?? "Overview";
 
   useEffect(() => {
-    const t1 = window.setTimeout(() => setSplashHiding(true), 1900);
-    const t2 = window.setTimeout(() => setSplashDone(true), 2500);
+    const t1 = window.setTimeout(() => setPhase("fly"), 1650);
+    const t2 = window.setTimeout(() => setPhase("done"), 2500);
     return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
   }, []);
 
   return (
     <div className="layout">
-      {!splashDone && <Splash hiding={splashHiding} />}
+      {phase !== "done" && <Splash flying={phase === "fly"} />}
       <aside className="sidebar">
-        <div className="brand">
+        <div className="brand"
+             style={{ visibility: phase === "done" ? "visible" : "hidden" }}>
           <Wordmark />
-          <div className="brand-tag">Dispute intelligence · Razorpay merchants</div>
+          <div className="brand-tag">Dispute intelligence</div>
         </div>
         <nav className="nav-group">
           <div className="nav-label">Risk console</div>
