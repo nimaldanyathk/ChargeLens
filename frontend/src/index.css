@@ -64,14 +64,68 @@ a:hover { text-decoration: underline; }
 .brand {
   padding: 18px 18px 16px; border-bottom: 1px solid rgba(255,255,255,0.08);
 }
-.wordmark { display: flex; align-items: center; gap: 9px; }
-.wordmark svg { flex: none; display: block; }
-.wordmark-text {
-  font-size: 16.5px; font-weight: 650; color: #fff;
-  letter-spacing: -0.35px; line-height: 1;
+/* ---- wordmark: pure type, no icon -------------------------------------- */
+.wordmark {
+  display: inline-flex; align-items: baseline;
+  font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
+  font-weight: 700; font-size: 19px; letter-spacing: -0.03em;
+  line-height: 1; color: #fff; user-select: none;
 }
-.wordmark-accent { color: #8fadff; font-weight: 650; }
-.brand-tag { font-size: 10.5px; color: #7f92b3; margin-top: 7px; }
+.wm-part { display: inline-flex; }
+.wm-ch { display: inline-block; }
+.wm-lens {
+  position: relative; padding-bottom: 3px;
+  background: linear-gradient(98deg, #9db6ff 0%, #4d74ff 85%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.wm-lens .wm-ch { background: inherit; -webkit-background-clip: text;
+  background-clip: text; -webkit-text-fill-color: transparent; }
+.wm-underline {
+  position: absolute; left: 1px; right: 2px; bottom: 0; height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #9db6ff, #305eff);
+  transform-origin: left center;
+}
+.wordmark-xl { font-size: 46px; letter-spacing: -0.035em; }
+.wordmark-xl .wm-lens { padding-bottom: 7px; }
+.wordmark-xl .wm-underline { height: 3.5px; right: 4px; }
+.brand-tag { font-size: 10.5px; color: #7f92b3; margin-top: 8px; }
+
+/* ---- splash screen -------------------------------------------------------- */
+.splash {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(1100px 640px at 50% 40%,
+              #0b3066 0%, #061a3d 55%, #030c1f 100%);
+  opacity: 1; transition: opacity 0.55s ease;
+}
+.splash-hide { opacity: 0; pointer-events: none; }
+.splash-inner { text-align: center; }
+.splash .wm-ch {
+  opacity: 0; transform: translateY(18px); filter: blur(6px);
+  animation: wm-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+@keyframes wm-rise {
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.splash .wm-underline {
+  transform: scaleX(0);
+  animation: wm-line 0.55s 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+@keyframes wm-line { to { transform: scaleX(1); } }
+.splash-sub {
+  margin-top: 18px; font-size: 11.5px; letter-spacing: 0.34em;
+  text-transform: uppercase; color: #7f92b3;
+  opacity: 0; animation: wm-fade 0.6s 1.15s ease forwards;
+}
+@keyframes wm-fade { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .splash .wm-ch, .splash .wm-underline, .splash-sub {
+    animation: none; opacity: 1; transform: none; filter: none;
+  }
+  .splash { transition: none; }
+}
 .nav-group { padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; }
 .nav-label {
   font-size: 10px; letter-spacing: 1px; text-transform: uppercase;

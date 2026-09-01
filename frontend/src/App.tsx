@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   NavLink, Navigate, Route, Routes, useLocation, useNavigate,
 } from "react-router-dom";
@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import Cases from "./pages/Cases";
 import CaseDetailPage from "./pages/CaseDetail";
 import Analytics from "./pages/Analytics";
+import { Splash, Wordmark } from "./components/Wordmark";
 
 const PAGE_TITLES: [RegExp, string][] = [
   [/^\/cases\/.+/, "Dispute detail"],
@@ -13,28 +14,6 @@ const PAGE_TITLES: [RegExp, string][] = [
   [/^\/analytics/, "Model performance"],
   [/^\//, "Overview"],
 ];
-
-function Wordmark() {
-  return (
-    <span className="wordmark">
-      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-        <defs>
-          <linearGradient id="lens-g" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#7da0ff" />
-            <stop offset="1" stopColor="#305eff" />
-          </linearGradient>
-        </defs>
-        <circle cx="12" cy="12" r="9" fill="none" stroke="url(#lens-g)" strokeWidth="2.6" />
-        <path d="M 12 7.4 A 4.6 4.6 0 0 1 16.6 12" fill="none"
-              stroke="#a7c0ff" strokeWidth="2.2" strokeLinecap="round" />
-        <circle cx="12" cy="12" r="1.8" fill="url(#lens-g)" />
-      </svg>
-      <span className="wordmark-text">
-        Charge<span className="wordmark-accent">Lens</span>
-      </span>
-    </span>
-  );
-}
 
 const ICONS = {
   overview: (
@@ -71,11 +50,20 @@ export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [splashHiding, setSplashHiding] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
   const title =
     PAGE_TITLES.find(([re]) => re.test(location.pathname))?.[1] ?? "Overview";
 
+  useEffect(() => {
+    const t1 = window.setTimeout(() => setSplashHiding(true), 1900);
+    const t2 = window.setTimeout(() => setSplashDone(true), 2500);
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
+  }, []);
+
   return (
     <div className="layout">
+      {!splashDone && <Splash hiding={splashHiding} />}
       <aside className="sidebar">
         <div className="brand">
           <Wordmark />
