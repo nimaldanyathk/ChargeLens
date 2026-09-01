@@ -56,7 +56,7 @@ export default function App() {
 
   useEffect(() => {
     const t1 = window.setTimeout(() => setPhase("fly"), 1650);
-    const t2 = window.setTimeout(() => setPhase("done"), 2500);
+    const t2 = window.setTimeout(() => setPhase("done"), 2850);
     return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
   }, []);
 

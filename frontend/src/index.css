@@ -105,11 +105,18 @@ a:hover { text-decoration: underline; }
 }
 .splash-fly { pointer-events: none; }
 .splash-fly .splash-veil { opacity: 0; }
+.splash-swoosh {
+  position: absolute; inset: 0; pointer-events: none;
+  filter: drop-shadow(0 0 8px rgba(77, 116, 255, 0.45));
+}
 .splash-inner { position: relative; text-align: center; }
 .splash-wm {
   transform-origin: top left; will-change: transform;
-  transition: transform 0.72s cubic-bezier(0.3, 0.72, 0.16, 1);
+  transition: transform 0.78s cubic-bezier(0.32, 0.72, 0.14, 1);
 }
+/* the wordmark's own underline hides during flight - the swoosh IS the
+   line travelling; it re-appears on the sidebar mark at landing */
+.splash-fly .wm-underline { animation: none; transform: scaleX(0); }
 .splash .wm-ch {
   opacity: 0; transform: translateY(18px); filter: blur(6px);
   animation: wm-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
