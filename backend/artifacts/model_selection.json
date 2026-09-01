@@ -1,5 +1,5 @@
 {
-  "model_version": "1.0.0",
+  "model_version": "1.1.0",
   "selected_model": "xgboost_depth5",
   "selection_metric": "validation PR-AUC",
   "leaderboard": [
@@ -12,6 +12,11 @@
       "model": "xgboost_depth3",
       "val_pr_auc": 0.9308,
       "val_roc_auc": 0.9483
+    },
+    {
+      "model": "soft_vote(xgb3+xgb5+rf)",
+      "val_pr_auc": 0.9295,
+      "val_roc_auc": 0.9495
     },
     {
       "model": "random_forest",
@@ -39,5 +44,5 @@
   },
   "n_features": 55,
   "seed": 42,
-  "trained_at": "2026-08-23T06:00:20+00:00"
+  "trained_at": "2026-08-23T09:00:16+00:00"
 }

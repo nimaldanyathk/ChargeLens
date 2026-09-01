@@ -1,7 +1,7 @@
 {
   "disclosure": "Synthetic dataset (see data/manifest.json). All metrics computed on the held-out test split, which was never used for training, model selection, calibration, or threshold tuning.",
-  "model_version": "1.0.0",
-  "evaluated_at": "2026-08-23T06:00:29+00:00",
+  "model_version": "1.1.0",
+  "evaluated_at": "2026-08-23T09:00:26+00:00",
   "test_set": {
     "n_cases": 1791,
     "n_abusive": 649,
