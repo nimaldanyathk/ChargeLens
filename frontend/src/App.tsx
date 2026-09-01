@@ -6,7 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import Cases from "./pages/Cases";
 import CaseDetailPage from "./pages/CaseDetail";
 import Analytics from "./pages/Analytics";
-import { Splash, Wordmark } from "./components/Wordmark";
+import { ProfileSheet, Splash, Wordmark } from "./components/Wordmark";
 
 const PAGE_TITLES: [RegExp, string][] = [
   [/^\/cases\/.+/, "Dispute detail"],
@@ -51,18 +51,20 @@ export default function App() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [phase, setPhase] = useState<"in" | "fly" | "done">("in");
+  const [profileOpen, setProfileOpen] = useState(false);
   const title =
     PAGE_TITLES.find(([re]) => re.test(location.pathname))?.[1] ?? "Overview";
 
   useEffect(() => {
     const t1 = window.setTimeout(() => setPhase("fly"), 1650);
-    const t2 = window.setTimeout(() => setPhase("done"), 2850);
+    const t2 = window.setTimeout(() => setPhase("done"), 2500);
     return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
   }, []);
 
   return (
     <div className="layout">
       {phase !== "done" && <Splash flying={phase === "fly"} />}
+      {profileOpen && <ProfileSheet onClose={() => setProfileOpen(false)} />}
       <aside className="sidebar">
         <div className="brand"
              style={{ visibility: phase === "done" ? "visible" : "hidden" }}>
@@ -110,7 +112,12 @@ export default function App() {
           </div>
           <div className="topbar-right">
             <span className="merchant-name">Acme Retail Pvt Ltd</span>
-            <span className="avatar">AR</span>
+            <button
+              className="avatar avatar-btn" aria-label="Merchant profile"
+              onClick={() => setProfileOpen(true)}
+            >
+              AR
+            </button>
           </div>
         </header>
         <main className="main">

@@ -105,18 +105,11 @@ a:hover { text-decoration: underline; }
 }
 .splash-fly { pointer-events: none; }
 .splash-fly .splash-veil { opacity: 0; }
-.splash-swoosh {
-  position: absolute; inset: 0; pointer-events: none;
-  filter: drop-shadow(0 0 8px rgba(77, 116, 255, 0.45));
-}
 .splash-inner { position: relative; text-align: center; }
 .splash-wm {
   transform-origin: top left; will-change: transform;
-  transition: transform 0.78s cubic-bezier(0.32, 0.72, 0.14, 1);
+  transition: transform 0.72s cubic-bezier(0.3, 0.72, 0.16, 1);
 }
-/* the wordmark's own underline hides during flight - the swoosh IS the
-   line travelling; it re-appears on the sidebar mark at landing */
-.splash-fly .wm-underline { animation: none; transform: scaleX(0); }
 .splash .wm-ch {
   opacity: 0; transform: translateY(18px); filter: blur(6px);
   animation: wm-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
@@ -382,6 +375,56 @@ select:focus, input[type="text"]:focus {
 .section-gap { margin-top: 12px; }
 .spinner { color: var(--muted); padding: 28px; text-align: center; }
 .footnote { font-size: 11.5px; color: var(--muted); margin-top: 10px; }
+
+/* ---- merchant profile sheet ------------------------------------------------ */
+.profile-sheet {
+  position: fixed; inset: 0; z-index: 60; background: var(--page);
+  display: flex; flex-direction: column;
+  animation: sheet-in 0.28s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes sheet-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.profile-head {
+  height: 52px; flex: none; display: flex; align-items: center;
+  justify-content: space-between; padding: 0 26px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.profile-title {
+  font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
+  font-size: 14px; font-weight: 600; color: var(--ink-strong);
+}
+.profile-close {
+  border: none; background: transparent; font-size: 26px; line-height: 1;
+  color: var(--ink-2); cursor: pointer; padding: 2px 8px; border-radius: 6px;
+}
+.profile-close:hover { background: #eef0f5; color: var(--ink-strong); }
+.profile-body { padding: 28px 26px 0; width: 100%; max-width: 620px; margin: 0 auto; }
+.profile-merchant { display: flex; align-items: center; gap: 14px; }
+.avatar-btn { border: none; cursor: pointer; padding: 0; font-family: inherit; }
+.avatar-lg { width: 44px; height: 44px; font-size: 15px; }
+.profile-name {
+  font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
+  font-size: 16px; font-weight: 700; color: var(--ink-strong);
+}
+.profile-mid { font-size: 12px; color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+/* the sarvam-style footer: a giant wordmark cropped at the bottom edge */
+.mega-wm {
+  margin-top: auto; overflow: hidden; white-space: nowrap;
+  display: flex; justify-content: center; align-items: flex-start;
+  font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
+  font-weight: 700; letter-spacing: -0.045em; line-height: 1;
+  font-size: clamp(96px, 19.5vw, 300px);
+  height: 0.62em; user-select: none;
+}
+.mega-charge { color: var(--ink-strong); }
+.mega-lens {
+  background: linear-gradient(98deg, #9db6ff 0%, #305eff 85%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
 
 /* ---- charts ---------------------------------------------------------------- */
 .chart-note { font-size: 11.5px; color: var(--muted); margin-top: 8px; }
