@@ -59,13 +59,18 @@ or threshold tuning.
 | ROC-AUC | 0.939 |
 | PR-AUC | 0.898 |
 | Brier score | 0.080 |
-| Precision (contest, at t_high=0.34) | 86.5% |
-| Recall (contest) | 84.0% |
-| F1 | 85.2% |
-| False-positive rate | 7.4% |
+| Metric | Value | 95% CI |
+|---|---|---|
+| ROC-AUC | 0.939 | 0.926 – 0.951 |
+| PR-AUC | 0.898 | 0.876 – 0.918 |
+| Precision (contest, at t_high=0.34) | 86.5% | 84.1 – 88.9% |
+| Recall (contest) | 84.0% | 81.1 – 86.8% |
+| F1 | 85.2% | 83.2 – 87.2% |
+| False-positive rate | 7.4% | — |
 
-Confusion matrix at the contest threshold: TP 545, FP 85, FN 104,
-TN 1057.
+Intervals are 95% stratified percentile bootstrap (B=5,000) on the saved
+per-case test outputs. Confusion matrix at the contest threshold: TP 545,
+FP 85, FN 104, TN 1057.
 
 **The false-positive cost is stated as prominently as the accuracy:** 85
 honest customers would have been flagged, an estimated ₹1.06L in wrongful
@@ -74,10 +79,18 @@ not to maximize a leaderboard metric. AUC-PR is reported alongside ROC-AUC
 because at dispute prevalence ROC-AUC is inflated by the true-negative
 pool.
 
-Known reporting limitation: the current split is random, not temporal.
-Random splits overstate fraud-model performance; an out-of-time split
-(reported side-by-side, with the honest degradation shown) is the next
-metrics change on the roadmap.
+**Out-of-time robustness.** The primary split is customer-grouped
+(leak-free by identity) but random in time. Because random splits can
+overstate fraud-model performance, the same pipeline is also retrained on
+a strict time-ordered split — earliest disputes train, latest disputes
+test — and reported side by side (`riskmodel/robustness.py`, shown on the
+Model performance page). On this dataset the out-of-time numbers hold
+(ROC-AUC 0.945, PR-AUC 0.921, precision 84.3%, recall 91.0%): the
+synthetic generator samples scenarios i.i.d. over time, so there is no
+concept drift to degrade on. The honest reading is that the numbers are
+stable *because the data is stationary*, not because drift was handled —
+on real, non-stationary disputes a gap would appear, and this check is
+the methodology that surfaces it.
 
 ## Decision layer
 
@@ -136,7 +149,9 @@ finance. ChargeLens maps to them by construction:
 - Win-probability priors are cited industry anchors, not fitted values.
 - The grounding gate validates numbers and identifiers, not qualitative
   phrasing.
-- Random (not yet temporal) test split.
+- Metrics carry sampling uncertainty (95% CIs reported); the out-of-time
+  check is clean only because the synthetic data is stationary — real
+  data would need ongoing drift monitoring.
 - CE3.0 eligibility reconstructs prior transactions from customer history
   for the demo; in production these come from the order/transaction store.
 
