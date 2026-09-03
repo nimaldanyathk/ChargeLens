@@ -25,4 +25,6 @@ ENV CHARGELENS_FRONTEND_DIST=/app/frontend_dist \
 # by default); mount a volume at /app/backend if you want it to persist
 EXPOSE 8000
 WORKDIR /app/backend
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# shell form so $PORT (injected by Render/Railway/Fly/Cloud Run) is honored,
+# falling back to 8000 for a plain `docker run -p 8000:8000`
+CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
