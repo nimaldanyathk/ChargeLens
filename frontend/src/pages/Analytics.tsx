@@ -8,6 +8,14 @@ import { Stat } from "../components/shared";
 
 const AXIS = { stroke: "var(--baseline)", fontSize: 11, fill: "var(--muted)" };
 
+function ciNote(m: AnalyticsT["metrics"], key: string,
+                fmt: "pct" | "num"): string | undefined {
+  const ci = m.confidence_intervals?.[key];
+  if (!ci) return undefined;
+  const f = (v: number) => fmt === "pct" ? `${(v * 100).toFixed(1)}%` : v.toFixed(3);
+  return `95% CI ${f(ci.lo)}–${f(ci.hi)}`;
+}
+
 export default function Analytics() {
   const [data, setData] = useState<AnalyticsT | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,13 +51,18 @@ export default function Analytics() {
       <div className="banner banner-info">{m.disclosure}</div>
 
       <div className="stat-strip">
-        <Stat label="Precision (contest)" value={pct(cd.precision)} note={`at t_high = ${m.thresholds.t_high}`} />
-        <Stat label="Recall (contest)" value={pct(cd.recall)} />
-        <Stat label="F1" value={pct(cd.f1)} />
+        <Stat label="Precision (contest)" value={pct(cd.precision)} note={ciNote(m, "precision", "pct") ?? `at t_high = ${m.thresholds.t_high}`} />
+        <Stat label="Recall (contest)" value={pct(cd.recall)} note={ciNote(m, "recall", "pct")} />
+        <Stat label="F1" value={pct(cd.f1)} note={ciNote(m, "f1", "pct")} />
         <Stat label="False-positive rate" value={pct(cd.false_positive_rate)} />
-        <Stat label="ROC-AUC" value={m.threshold_free.roc_auc.toFixed(3)} />
-        <Stat label="PR-AUC" value={m.threshold_free.pr_auc.toFixed(3)} />
+        <Stat label="ROC-AUC" value={m.threshold_free.roc_auc.toFixed(3)} note={ciNote(m, "roc_auc", "num")} />
+        <Stat label="PR-AUC" value={m.threshold_free.pr_auc.toFixed(3)} note={ciNote(m, "pr_auc", "num")} />
       </div>
+      <div className="chart-note" style={{ marginTop: 6 }}>
+        Ranges are 95% bootstrap confidence intervals on the held-out test set.
+      </div>
+
+      {data.robustness && <RobustnessCard r={data.robustness} />}
 
       <div className="grid two-col section-gap">
         <div className="card">
@@ -313,6 +326,52 @@ function ConfusionMatrix({ tp, fp, fn, tn }: { tp: number; fp: number; fn: numbe
       <div className="cm-cell" style={cell(tn)}>
         <div className="cm-n">{tn}</div><div className="cm-l">true negative</div>
       </div>
+    </div>
+  );
+}
+
+function RobustnessCard({ r }: { r: NonNullable<AnalyticsT["robustness"]> }) {
+  type MetricKey = "roc_auc" | "pr_auc" | "precision" | "recall";
+  const rows: [string, MetricKey, "num" | "pct"][] = [
+    ["ROC-AUC", "roc_auc", "num"],
+    ["PR-AUC", "pr_auc", "num"],
+    ["Precision", "precision", "pct"],
+    ["Recall", "recall", "pct"],
+  ];
+  const f = (v: number, fmt: "num" | "pct") =>
+    fmt === "pct" ? `${(v * 100).toFixed(1)}%` : v.toFixed(3);
+  return (
+    <div className="card section-gap">
+      <h3>
+        Out-of-time robustness
+        <span className="h3-note">random split vs training on the past, testing on the future</span>
+      </h3>
+      <table className="data" style={{ maxWidth: 560 }}>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th className="num">Customer-grouped (primary)</th>
+            <th className="num">Out-of-time</th>
+            <th className="num">Δ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([label, key, fmt]) => {
+            const d = r.delta_out_of_time_minus_primary[key];
+            return (
+              <tr key={key}>
+                <td>{label}</td>
+                <td className="num">{f(r.customer_grouped[key], fmt)}</td>
+                <td className="num">{f(r.out_of_time[key], fmt)}</td>
+                <td className="num" style={{ color: d >= 0 ? "var(--good)" : "var(--bad)" }}>
+                  {d >= 0 ? "+" : ""}{fmt === "pct" ? `${(d * 100).toFixed(1)}pp` : d.toFixed(3)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <div className="chart-note" style={{ marginTop: 10 }}>{r.interpretation}</div>
     </div>
   );
 }

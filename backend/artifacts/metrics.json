@@ -1,7 +1,7 @@
 {
   "disclosure": "Synthetic dataset (see data/manifest.json). All metrics computed on the held-out test split, which was never used for training, model selection, calibration, or threshold tuning.",
   "model_version": "1.1.0",
-  "evaluated_at": "2026-08-23T09:00:26+00:00",
+  "evaluated_at": "2026-09-03T15:36:10+00:00",
   "test_set": {
     "n_cases": 1791,
     "n_abusive": 649,
@@ -29,6 +29,43 @@
     "roc_auc": 0.9387,
     "pr_auc": 0.8976,
     "brier_score": 0.0802
+  },
+  "confidence_intervals": {
+    "precision": {
+      "point": 0.8651,
+      "lo": 0.8412,
+      "hi": 0.8887
+    },
+    "recall": {
+      "point": 0.8398,
+      "lo": 0.8105,
+      "hi": 0.8675
+    },
+    "f1": {
+      "point": 0.8522,
+      "lo": 0.8323,
+      "hi": 0.8721
+    },
+    "savings_inr": {
+      "point": 3459798.188,
+      "lo": 3178836.3067,
+      "hi": 3763398.4922
+    },
+    "roc_auc": {
+      "point": 0.9387,
+      "lo": 0.9261,
+      "hi": 0.9507
+    },
+    "pr_auc": {
+      "point": 0.8976,
+      "lo": 0.876,
+      "hi": 0.9184
+    },
+    "_meta": {
+      "B": 5000,
+      "alpha": 0.05,
+      "method": "stratified percentile bootstrap"
+    }
   },
   "bands": {
     "low": {

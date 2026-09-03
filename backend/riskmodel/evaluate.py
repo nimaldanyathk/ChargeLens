@@ -19,6 +19,7 @@ from sklearn.metrics import (
     precision_recall_curve, roc_auc_score, roc_curve,
 )
 
+from .bootstrap import confidence_intervals
 from .costs import OPS_COST, cost_breakdown, expected_cost
 from .features import FEATURE_COLUMNS, build_features
 from .train import ARTIFACT_DIR, MODEL_VERSION, load_split
@@ -92,6 +93,9 @@ def main():
             if mask.sum() else None,
         }
 
+    # ---- bootstrap confidence intervals on the headline metrics ---------
+    ci = confidence_intervals(y, p, amounts, t_low, t_high, B=5000)
+
     # ---- cost analysis --------------------------------------------------
     model_cost = cost_breakdown(y, pred, amounts)
     accept_all = expected_cost(y, np.zeros_like(y), amounts)
@@ -133,6 +137,7 @@ def main():
             "pr_auc": round(float(pr_auc), 4),
             "brier_score": round(float(brier), 4),
         },
+        "confidence_intervals": ci,
         "bands": bands,
         "cost_analysis": {
             **model_cost,

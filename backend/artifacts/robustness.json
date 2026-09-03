@@ -1,0 +1,29 @@
+{
+  "note": "Same pipeline, two evaluation protocols. 'customer_grouped' is the primary split (leak-free by identity, random in time). 'out_of_time' trains on the earliest disputes and tests on the latest.",
+  "interpretation": "Out-of-time performance holds here (no material drop). This synthetic generator samples dispute scenarios i.i.d. over time, so there is no concept drift to degrade on - the honest reading is that the numbers are stable BECAUSE the data is stationary, not because drift was handled. On real, non-stationary disputes a gap would appear; this check is the methodology that surfaces it.",
+  "selected_model_out_of_time": "xgboost_depth3",
+  "out_of_time_thresholds": {
+    "t_low": 0.16,
+    "t_high": 0.27
+  },
+  "customer_grouped": {
+    "roc_auc": 0.9387,
+    "pr_auc": 0.8976,
+    "precision": 0.8651,
+    "recall": 0.8398,
+    "n_test": 1791
+  },
+  "out_of_time": {
+    "roc_auc": 0.945,
+    "pr_auc": 0.9212,
+    "precision": 0.8431,
+    "recall": 0.9103,
+    "n_test": 1800
+  },
+  "delta_out_of_time_minus_primary": {
+    "roc_auc": 0.0063,
+    "pr_auc": 0.0236,
+    "precision": -0.022,
+    "recall": 0.0705
+  }
+}

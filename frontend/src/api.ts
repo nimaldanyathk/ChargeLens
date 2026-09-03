@@ -156,6 +156,7 @@ export interface Analytics {
       confusion_matrix: { tp: number; fp: number; fn: number; tn: number };
     };
     threshold_free: { roc_auc: number; pr_auc: number; brier_score: number };
+    confidence_intervals?: Record<string, { point: number; lo: number; hi: number }>;
     bands: Record<string, { count: number; share: number; abusive_rate: number | null }>;
     cost_analysis: {
       assumptions: Record<string, number>;
@@ -189,6 +190,14 @@ export interface Analytics {
     top_features: { feature: string; mean_abs_shap: number; mean_shap: number }[];
   };
   threshold_curve: { threshold: number; precision: number; expected_cost_inr: number }[];
+  robustness: {
+    note: string;
+    interpretation: string;
+    selected_model_out_of_time: string;
+    customer_grouped: { roc_auc: number; pr_auc: number; precision: number; recall: number; n_test: number };
+    out_of_time: { roc_auc: number; pr_auc: number; precision: number; recall: number; n_test: number };
+    delta_out_of_time_minus_primary: { roc_auc: number; pr_auc: number; precision: number; recall: number };
+  } | null;
   dataset_manifest: {
     synthetic: boolean; disclosure: string; n_cases: number; seed: number;
     class_balance: { abusive: number; legitimate: number; abusive_rate: number };

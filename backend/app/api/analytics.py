@@ -21,6 +21,11 @@ def _read(name: str) -> dict | list:
     return json.loads(path.read_text())
 
 
+def _read_optional(name: str):
+    path = settings.artifact_dir / name
+    return json.loads(path.read_text()) if path.exists() else None
+
+
 @router.get("")
 def analytics():
     thresholds = _read("thresholds.json")
@@ -29,6 +34,7 @@ def analytics():
         "model_selection": _read("model_selection.json"),
         "global_importance": _read("global_importance.json"),
         "threshold_curve": thresholds.get("cost_curve", []),
+        "robustness": _read_optional("robustness.json"),
         "dataset_manifest": json.loads(
             (settings.data_dir / "manifest.json").read_text())
         if (settings.data_dir / "manifest.json").exists() else None,
