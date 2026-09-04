@@ -1,5 +1,8 @@
 # ChargeLens
 
+**Live demo: https://chargelens.onrender.com** — synthetic data, test
+mode. (Free tier; the first request after idle can take ~50s to wake.)
+
 A dispute console for Razorpay merchants that decides which chargebacks
 are worth fighting — and proves every number it shows.
 
