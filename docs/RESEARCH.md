@@ -1,333 +1,151 @@
-# ChargeLens robustness research
+# Domain research and references
 
-Research notes compiled 23 Aug 2026 to drive the pre-submission build sprint
-(27 Aug – 5 Sep). Six angles: decision mathematics, fraud-ML methodology,
-India payment rails, card-network dispute rules, LLM grounding/safety, and
-the commercial product bar. Every claim carries its source; numbers are
-industry-reported figures, not our measurements, and are used as priors and
-context — never as our own results.
+The design decisions in ChargeLens are grounded in published card-network
+rules, Indian payments regulation, fraud-ML methodology, and the
+economics of dispute representment. This document records what that
+research established and the sources behind it. All figures here are
+industry-reported context and priors, not measurements of ChargeLens;
+the product's own numbers live in the model card and on the Model
+performance page.
 
-Priorities: **[must]** ships before submission, **[should]** ships if time
-allows, **[could]** is documented as roadmap.
+## 1. The economics of contesting a dispute
 
----
-
-## 1. Decision mathematics — make the money claims survive a quant
-
-**[must] Per-case expected value, not a global rule.**
-The contest/accept decision is an EV comparison using the case's own amount:
+Contesting is worth it only when the expected recovery beats its cost, so
+the decision is an expected-value comparison that uses each case's own
+amount:
 
 ```
-EV(contest) = p_win · A − c_ops − c_fee        EV(accept) = 0
+EV(contest) = p_win * (1 - pre_arb_haircut) * amount - ops_cost - dispute_fee
 ```
 
-India-specific: the dispute fee (~₹500–2,000 in the Razorpay ecosystem) is
-**not refunded even on a win** — it is a sunk cost of contesting, not a cost
-of losing. Display EV in rupees on every case; recommend Accept whenever
-EV < 0 regardless of risk score.
-(chargeflow.io/blog/forecast-chargeback-recovery-rate, razorpay.com/blog/chargebacks/)
+Two facts shape this. First, in the Razorpay ecosystem the per-dispute
+fee is charged for handling the chargeback and is not refunded even when
+the merchant wins, so it is a sunk cost of contesting. Second, a
+calibrated fraud probability is not a win probability: winning
+representment also requires evidence the issuer accepts. Industry
+outcomes are far below model-style optimism: average representment win
+rates around 20%, roughly 43.8% of cases won among those merchants choose
+to fight, and net dollar recovery near 10.7% after second-cycle disputes
+and fees; true-fraud reason codes win far less often than suspected
+friendly fraud. ChargeLens therefore models `p_win` as the calibrated
+probability capped by a cited per-reason prior and scaled by an
+evidence-strength factor.
 
-**[must] Example-dependent Bayes threshold.** Under calibrated probabilities
-the optimal threshold is t\* = c_FP/(c_FP + c_FN) (Elkan 2001). Because the
-false-negative cost is the case's own amount A_i, the threshold is
-per-instance:
+This is the example-dependent form of Elkan's cost-sensitive threshold
+(t* = c_FP / (c_FP + c_FN)): because the false-negative cost is the
+case's own amount, a large dispute is worth contesting at a lower
+probability than a small one.
 
-```
-t_i = (c_ops + c_fee) / (c_ops + c_fee + A_i)
-```
+Sources: cseweb.ucsd.edu/~elkan/rescale.pdf; Bahnsen et al.,
+CostSensitiveClassification; Vanderschueren et al., EJOR 2021;
+chargebacks911.com/chargeback-stats/;
+chargebackgurus.com; chargeflow.io/blog/forecast-chargeback-recovery-rate;
+razorpay.com/blog/chargebacks/.
 
-A ₹50,000 dispute should be contested at a far lower probability than a
-₹800 one. Algebraically identical to EV > 0 — implement once, present both
-ways. Global thresholds remain only for the review band.
-(cseweb.ucsd.edu/~elkan/rescale.pdf; Bahnsen; Vanderschueren et al., EJOR 2021)
+## 2. Fraud-ML methodology
 
-**[must] Decompose p_win — a calibrated fraud probability is NOT a win
-probability.** Winning also requires evidence the issuer accepts. Industry
-anchors: average representment win rate ~20%; merchants win ~43.8% of cases
-they *choose* to fight but net dollar recovery is only ~10.7%; true-fraud
-codes win ~17% vs ~44% for suspected friendly fraud; disciplined programs
-target 55–65%. Vendor claims of ~75% reflect case selection. v1 model:
+Metrics on fraud data are easy to overstate. Random splits can leak
+temporally correlated cases and inflate results, so ChargeLens also
+retrains on a strict time-ordered split and reports it beside the primary
+numbers. At fraud prevalence, ROC-AUC is inflated by the true-negative
+pool, so average precision (PR-AUC) is reported alongside it. Point
+estimates carry sampling uncertainty, so every headline metric is
+reported with a 95% stratified bootstrap confidence interval.
 
-```
-p_win_i = p_cal(abusive)_i × e_i × prior(reason_category)
-```
+Resampling methods such as SMOTE distort calibration without improving
+discrimination (van den Goorbergh et al., JAMIA 2022); because the
+decision math depends on calibrated probabilities, ChargeLens uses class
+weighting plus post-hoc isotonic calibration rather than resampling.
+Customer-history features are computed as of the dispute-creation time to
+avoid using information that would not exist at scoring time.
 
-where e_i ∈ [0.3, 1.0] is a deterministic evidence-strength multiplier and
-the reason-category priors live in a citable JSON table (source URL stored
-per entry, shown in the UI tooltip).
-(chargebackgurus.com, chargebacks911.com/chargeback-stats/, chargeflow.io)
+A public real-data proxy for future validation is the IEEE-CIS Fraud
+Detection dataset, whose label is chargeback-derived; well-tuned single
+models there typically reach ROC-AUC in the 0.88 to 0.93 range.
 
-**[must] Net recovery is the honest KPI.** ~23% of representment wins are
-challenged again in pre-arbitration (fees $25–50 filing, up to $500+$600 at
-arbitration). Primary KPI: `expected net recovery = A·p_win·p(no pre-arb
-loss) − fees − ops`. Lead the metrics page with the Savings score vs the
-best naive policy (costcla): `savings = (C_baseline − C_model)/C_baseline`
-with the full per-case cost matrix.
-(albahnsen.github.io/CostSensitiveClassification; chargebacks911.com)
+Sources: van den Goorbergh et al., JAMIA 2022; kaggle.com IEEE-CIS Fraud
+Detection; standard cost-sensitive fraud literature above.
 
-**[must] Bootstrap 95% CIs on every headline number.** Stratified bootstrap
-(resample within class), B ≥ 5,000, percentile intervals; report
-"Precision 86.5% [83.9, 89.0]" style, including the rupee-savings interval.
-(github.com/luferrer/ConfidenceIntervals; Raschka 2022)
+## 3. Indian payment rails
 
-**[should] Conformal review band.** Use conformal risk control (Angelopoulos
-et al., ICLR 2024) to pick the auto-decide region so the expected
-missed-winnable rate among auto-decisions is ≤ α (e.g. 5%) with a
-distribution-free finite-sample guarantee; α becomes a product setting
-("risk tolerance"). (arxiv.org/abs/2208.02814)
+UPI is roughly 85% of Indian digital-payment volume (RBI, H2 2025), so
+the data model treats payment rail as first-class. UPI disputes follow
+NPCI's URCS process with a uniform 45-day customer chargeback window and
+automated accept/reject via TCC/RET, which differs from card
+representment. Practical merchant response windows in India are short
+(around 3 business days per acquirer guidance, and about 7 working days
+for NPCI/RuPay and UPI), which is why the queue is deadline-first and the
+`respond_by` value from the dispute record is the runtime source of
+truth.
 
-**[should] Calibration evidence panel.** Reliability diagram with
-equal-mass bins + per-bin counts, ECE and Brier with CIs, one-line
-justification of isotonic given calibration-set size.
-(arxiv.org/pdf/2112.10327)
+RBI's Harmonisation of Turn Around Time circular auto-reverses failed and
+duplicate transactions with daily compensation, so genuine
+failed-transaction complaints should be accepted, not contested. RBI's
+2017 limited-liability circular means issuers lean toward customers on
+unauthorised claims, so the winning defense in the fraud phase is proof
+the genuine customer authorised the transaction.
 
-**[should] Sensitivity analysis.** Tornado chart varying c_fee ₹500–2,000,
-c_ops ₹100–1,000, ±10% calibration error, dispute mix — recomputing
-*decisions* at each setting, base case marked. Plus a threshold-stability
-plot: savings-vs-threshold curve with bootstrap ribbon showing the operating
-point sits on a plateau, and the IQR of bootstrap-retuned thresholds.
-
-**[could] One-page decision-theory appendix** in the model card tying the
-chain: calibrated probability → example-dependent costs → Bayes per-case
-decision → guaranteed deferral band → uncertainty-quantified savings →
-sensitivity. This is exactly how cost-sensitive fraud papers structure
-evaluation (Bahnsen 2014; Vanderschueren 2021).
-
----
-
-## 2. Fraud-ML methodology — survive expert scrutiny
-
-**[must] Temporal (out-of-time) split.** Random splits leak temporally
-correlated cases and overstate fraud-model performance (published example:
-ROC-AUC 0.977→0.853, AP 0.925→0.537 moving from random to out-of-time).
-Re-split chronologically ~60/20/20, tune thresholds on the middle window,
-report only the future window — and show random-split vs OOT side by side.
-The honest degradation is itself a differentiator.
-
-**[must] AUC-PR as headline metric.** At fraud prevalence ROC-AUC is
-inflated by the true-negative pool; AP exposes degradation ROC hides.
-Report the quadruple ROC-AUC / AUC-PR / Brier / expected-cost-at-threshold.
-
-**[must] Leakage audit + point-in-time features.** List every feature with
-its availability timestamp relative to dispute creation; rebuild customer
-history (prior disputes, orders, account age) via as-of joins at the
-dispute-created timestamp; publish the feature-availability table as a
-"no future information" guarantee.
-
-**[must] No SMOTE — and say why.** Resampling distorts calibration without
-improving discrimination (van den Goorbergh et al., JAMIA 2022). Our
-scale_pos_weight + isotonic architecture is the current consensus; add the
-citation and Brier/log-loss to preempt the most common reviewer question.
-
-**[should] IEEE-CIS external validation.** Its label is literally
-chargeback-derived; a 1-day adapter mapping columns into our pipeline with a
-time-ordered split gives a real-data transfer number against the published
-XGBoost bar of ROC-AUC ~0.88–0.93.
-
-**[should] Velocity / entity-sharing features.** disputes_per_customer
-{7,30,90}d, disputes_per_device_30d, distinct_customers_sharing_device /
-_address, distinct_instruments_per_customer — computed point-in-time; plant
-2–3 abuse rings in the generator so they demonstrably fire. Rings reuse
-devices and instruments even when names/emails rotate.
-
-**[should] Drift endpoint.** PSI per feature and score decile vs training
-baseline (<0.1 stable, 0.1–0.25 moderate, >0.25 action) + per-decile
-predicted-vs-realized rate; documented retrain trigger.
-
-**[could] Gameability registry + monotone constraints.** Tag features
-customer-controllable vs immutable; XGBoost monotone_constraints so prior
-disputes can never lower risk and tenure can never raise it.
-
----
-
-## 3. India rails — not a US clone
-
-**[must] UPI-first data model.** UPI is ~85% of Indian digital-payment
-volume (H2 2025, RBI/IBEF). Add `rail` (upi|card|netbanking|wallet); for
-UPI disputes use URCS semantics: uniform 45-day customer chargeback window
-(NPCI OC 198/2023-24), URCS auto-accept/reject via TCC/RET since 15 Feb
-2025, complaints arriving via UDIR. Rebalance synthetic data to ~80–85% UPI.
-
-**[must] Mirror Razorpay's dispute entity exactly.** Phases fraud/
-retrieval/chargeback/pre_arbitration/arbitration; statuses open/
-under_review/won/lost/closed; the ten named evidence keys (shipping_proof,
-billing_proof, cancellation_proof, customer_communication, proof_of_service,
-explanation_letter, refund_confirmation, access_activity_log,
-refund_cancellation_policy, term_and_conditions) + others[]; contest
-requires ≥1 document uploaded via the Documents API (purpose=
-dispute_evidence). Emit a contest-ready payload that would validate against
-the real API.
-
-**[must] The six real webhooks.** payment.dispute.{created, won, lost,
-closed, under_review, action_required}; verify X-Razorpay-Signature over the
-**raw** body; treat action_required as a high-priority queue trigger.
-
-**[must] Deadline triage.** Practical representment windows in India are
-days (~3 business days per acquirer guidance; NPCI/RuPay and UPI ~7 working
-days; Visa's global windows compressed to ~9–18 days in Jul 2025 while
-Mastercard allows 45). Queue sorted by (time-to-deadline, A×p_win);
-deadline-missed logged as an explicit audit outcome. respond_by from the
-API is the runtime source of truth.
-
-**[should] RBI TAT gate.** Failed/duplicate/timeout transactions auto-
-reverse under RBI's TAT Harmonisation circular (T+1..T+5, ₹100/day
-compensation) — route them to "recommend accept, auto-reversal expected"
-instead of drafting a defense.
-
-**[should] Fraud-phase = authorization-proof narrative.** Under RBI's 2017
-limited-liability circular issuers lean toward customers on unauthorised
-claims; the winning merchant defense is proof the genuine customer
-authorized (device match, history, 2FA/UPI PIN completion,
-access_activity_log).
-
-**[should] RTO/COD credibility features.** India RTO runs ~25–35% (COD
-~26–35% vs <8% prepaid; ₹150–300 loss per failed order). Past-RTO count and
-COD refusal rate become customer-credibility evidence; one dashboard stat
-frames RTO as the India loss class. No separate RTO product.
-
-**[must] FREE-AI alignment section.** RBI's FREE-AI report (Aug 2025) —
-seven Sutras — maps directly onto shipped features: People First → human-
-in-the-loop; Accountability → audit log; Understandable by Design →
-calibrated scores + grounded drafts; Safety/Resilience → deterministic
-fallback; Fairness → honest FP-cost metrics. One model-card page.
-
----
+Sources: ibef.org (RBI UPI volume, H2 2025); NPCI circular OC 198/2023-24
+and URCS/UDIR documentation; RBI TAT Harmonisation circular; RBI
+limiting-liability circular 2017; razorpay.com/docs disputes.
 
 ## 4. Card-network evidence rules
 
-**[must] Visa CE3.0 eligibility checker** (reason code 10.4 only): ≥2 prior
-paid, undisputed transactions on the same payment method aged 120–364 days;
-disputed + both priors share two "main" elements (purchase IP, device
-ID/fingerprint — note device fingerprint + device ID is NOT a valid pair)
-or one main + one secondary (shipping address, email, account ID); product
-descriptions required for all three. Qualified → liability shifts to
-issuer. Emit qualified/requires_action with missing fields listed; badge in
-UI; raises win-probability tier.
+Visa Compelling Evidence 3.0 (reason code 10.4) lets a merchant reverse a
+card-absent fraud chargeback by showing at least two prior undisputed
+transactions on the same credential, aged 120 to 365 days, that share
+data elements with the disputed transaction: two main elements (purchase
+IP, device ID) or one main plus one secondary (shipping address, account
+ID or email). Qualification shifts liability to the issuer. Mastercard's
+First-Party Trust program is the analogue for its fraud code 4837 with a
+different one-of-each-category rule.
 
-**[should] Mastercard First-Party Trust checker** (4837): one data point
-from each of three categories — device identity, delivery information,
-additional identity factor. Different logic from Visa; show which program a
-case can invoke.
+Winning evidence differs by reason code: item-not-received disputes turn
+on signed proof of delivery and tracking to a verified address, while
+card-absent fraud turns on authentication records and device/IP history.
+Base-rate context: first-party (friendly) fraud is roughly 20% of
+disputes, and a large share of consumers admit to disputing a charge they
+later recognised.
 
-**[should] Canonical reason-code taxonomy.** Map Visa 10.x/11.x/12.x/13.x
-and MC 4808/4834/4837/4853 into ~8 canonical categories
-(10.4≈4837, 13.1≈4853-not-received, 13.3≈4853-not-as-described); scorer and
-templates condition on the canonical category.
+Sources: Visa CE3.0 merchant guidance; docs.stripe.com/disputes;
+mastercard.com First-Party Trust; chargebacks911.com and
+chargebackgurus.com reason-code references; Mastercard/Datos Insights
+first-party-fraud reporting.
 
-**[must] Reason-code-specific evidence templates** with weighted
-completeness: INR (13.1/4853) → signed POD, tracking to verified address,
-service/access logs; card-absent fraud (10.4/4837) → 3DS/AVS/CVV records,
-IP+device history, login data, prior orders; not-as-described (13.3) →
-product description as sold, customer comms, accepted refund policy. Add
-refund-policy-disclosure and customer-comms-log as first-class evidence
-fields. Readiness badge per dispute (Ready / Needs evidence / Weak) with a
-"what's missing to win" checklist (Stripe recommended_evidence pattern).
+## 5. LLM grounding and injection defense
 
-**[should] Recalibrate generator class mix to cited base rates:** first-
-party (friendly) fraud ~20% of disputes (Mastercard/Datos 2025); ~48% of
-consumers admit disputing a legitimate charge; digital-goods fraud ~75%
-first-party.
+The disputing customer's claim text is attacker-controlled input to the
+drafting step, which makes it an indirect prompt-injection vector (OWASP
+LLM01). ChargeLens canonicalizes it (NFKC, control- and
+zero-width-character stripping, length cap), datamarks it, and fences it
+with a per-request random boundary, following the spotlighting technique
+(Hines et al. 2024; Microsoft MSRC 2025). Generated drafts pass a
+grounding check so that numbers and identifiers not present in the trusted
+facts are rejected in favour of the deterministic letter. Both the
+grounding gate and the injection defenses are measured by benchmarks that
+run in CI.
 
-**[could] VAMP panel.** From 1 Apr 2026 Visa's combined fraud+dispute ratio
-threshold tightens to 1.5% with $8/dispute in the excessive tier — and
-winning a representment does NOT remove the dispute from the ratio. Honest
-caveat: defense recovers revenue; it does not repair network standing.
+Stronger natural-language entailment verifiers (for example MiniCheck,
+EMNLP 2024) are a documented option for extending grounding beyond
+numeric and identifier checks to qualitative claims.
 
----
+Sources: genai.owasp.org LLM01; Hines et al. 2024 (spotlighting);
+microsoft.com MSRC 2025; github.com/Liyan06/MiniCheck.
 
-## 5. LLM grounding & injection defense
+## 6. Product context
 
-**[must] Second gate: NLI verifier.** MiniCheck (EMNLP 2024, Apache-2.0):
-RoBERTa-Large variant runs on CPU; per-sentence entailment against the
-evidence pack rendered as grounding text; any sentence below threshold →
-existing deterministic fallback. Keeps numeric gate as gate 1.
-(github.com/Liyan06/MiniCheck)
+Commercial chargeback-automation tools price on success fees (around 25%
+to 30% of recovered value), which is the basis for the ROI comparison in
+the app. Pre-dispute alert networks (Verifi, Ethoca) prevent some
+chargebacks but cost the full transaction amount plus a per-alert fee and
+do not cover India's UPI and RuPay rails, so representment remains the
+path that recovers revenue. Razorpay has publicly described a dispute
+auto-responder of its own; ChargeLens is positioned as the risk-managed
+layer around such automation: calibrated win-probability scoring,
+cost-based fight-or-accept economics, grounding-verified drafts with a
+deterministic fallback, human-approved submissions, and a full audit
+trail.
 
-**[must] Perturbation benchmark** (scripts/eval_grounding.py): ~100 cases →
-~400 corrupted drafts across six classes (numeric swap, off-by-one date,
-entity swap, fabricated event, unsupported strengthener, negation flip);
-report per-class catch rate AND false-block rate on clean drafts (the FP
-cost of the safety gate — same honesty bar as the scorer).
-
-**[must] Spotlight claim_description.** It is attacker-controlled text
-(OWASP LLM01 #1 risk). NFKC canonicalization, strip control/zero-width
-chars, length cap; wrap in a labeled untrusted-data block with a random
-per-request boundary token; datamark; system-prompt rule that the block has
-zero instruction authority. (Hines et al. 2024; Microsoft MSRC 2025)
-
-**[should] Injection red-team suite in CI.** 30–50 hostile
-claim_descriptions (direct instructions, roleplay, fake system tags,
-markdown/HTML smuggling, encodings, Hindi/Hinglish variants); assert no
-canary token, no concession language; report attack-success-rate
-before/after spotlighting.
-
-**[should] Sentence-level citations in the review UI.** Each draft sentence
-hover-links to the evidence fields it was verified against. No commercial
-tool (Chargeflow, Justt, Stripe Smart Disputes) discloses its grounding
-method — verifiable grounding is our differentiator.
-
-**[should] Audit completeness per FREE-AI.** Each draft logs model+version,
-prompt-template hash, both gate results per sentence, fallback events, and
-the approving human + timestamp. No submission without an explicit human
-approval event.
-
-**[could] Output allowlist validator.** Every URL/email/ID/entity in a
-draft must exist in the evidence pack; enforce letter structure; reject
-markdown/HTML. Deterministic post-filter, independent of the NLI gate.
-
----
-
-## 6. Product bar & positioning
-
-**[must] Evidence dossier PDF export.** The universal commercial
-deliverable: cover letter + reason-code-matched exhibits (transaction
-verification, POD, comms, policies), one click, and the same file feeds the
-Razorpay Documents API upload. The single most judge-visible artifact.
-
-**[must] Position against Razorpay's own beta auto-responder.** Razorpay
-has publicly announced a dispute auto-responder agent (co-founder Shashank
-Kumar, already handling thousands of responses). A pure "we auto-draft"
-pitch collides with their roadmap. ChargeLens is the **risk-managed layer**
-an auto-responder lacks: calibrated win probability, cost-tuned fight/accept
-economics, grounding-verified drafts with deterministic fallback,
-human-approved submissions, audit trail. One pitch slide contrasts the two.
-
-**[must] ROI calculator.** Public 2026 pricing: Chargeflow 25% of
-recoveries (+$29/alert), Stripe Smart Disputes 30% of recoveries, Justt
-~20–25%. Given volume, average value, and our honest win rate: net recovery
-under ChargeLens vs a success-fee vendor, with the scorer's FP cost in the
-same table.
-
-**[should] Prevention-vs-representment explainer.** Verifi CDRN/RDR and
-Ethoca alerts prevent ~40–70% of alerted chargebacks but every prevented
-case = 100% revenue loss + per-alert fee (~$15–30), and coverage gaps on
-India's UPI/RuPay rails. ChargeLens is the recovery layer that complements
-alerts.
-
-**[should] Deadline safety net (opt-in).** Stripe's flagship pattern:
-if no human decision by N hours before respond_by, submit the deterministic
-(never LLM) draft — only when the merchant has explicitly pre-authorized
-the behavior in settings, and always logged. Default remains human-in-the-
-loop.
-
----
-
-## Sprint order (27 Aug → 5 Sep)
-
-Day 1–2: Razorpay integration (entity mirror, six webhooks + raw-body HMAC,
-contest payload, Documents API) + rail field + deadline triage queue.
-Day 3: Decision math core (EV, per-case threshold, p_win decomposition,
-net-recovery KPI, priors table) — mostly formulas over existing plumbing.
-Day 4: Metrics honesty layer (temporal split retrain, AUC-PR, bootstrap
-CIs, savings score, calibration panel, leakage audit).
-Day 5: Evidence engine (reason-code templates, CE3.0 + MC FPT checkers,
-readiness badges) + dossier PDF export.
-Day 6: Grounding v2 (MiniCheck gate, perturbation benchmark, spotlighting,
-injection suite) + audit completeness.
-Day 7: README, model card (FREE-AI page, decision-theory appendix), CI,
-run.sh + Dockerfile, deploy.
-Day 8: ROI calculator, sensitivity charts, agreement tracking, polish.
-Day 9–10: Pitch video + form answers + buffer.
-
-Stretch (only if ahead): conformal band, IEEE-CIS transfer run, drift
-endpoint, VAMP panel.
+Sources: published 2026 pricing for Chargeflow, Stripe Smart Disputes,
+and Justt; chargeblast.com and chargeback.io alert-network comparisons;
+public statements on Razorpay's dispute automation.
